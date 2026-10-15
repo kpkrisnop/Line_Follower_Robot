@@ -29,7 +29,7 @@ LOG_HEADER = "# Tuning log\n\n| Time | Mode | Settings | Note |\n|---|---|---|--
 
 # name, step, decimals
 PARAMS = [("kp", 0.05, 3), ("kd", 0.05, 3), ("ki", 0.001, 3), ("base", 10, 0),
-          ("slow", 0.01, 3), ("min", 10, 0), ("bang", 10, 0), ("off", 1, 0)]
+          ("slow", 0.01, 3), ("min", 10, 0), ("turn", 10, 0), ("bang", 10, 0), ("off", 1, 0)]
 
 
 def find_port():
@@ -95,7 +95,7 @@ class Settings(Widget, can_focus=True):
 class Tuner(App):
     CSS = """
     Screen { layout: vertical; }
-    #top { height: 12; }
+    #top { height: 13; }
     Settings { width: 34; border: round $accent; border-title-align: left; padding: 0 1; }
     #live { border: round $accent; padding: 0 1; }
     #livetext { height: 3; }

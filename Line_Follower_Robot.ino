@@ -26,6 +26,7 @@ int BASE_SPEED = 160;          // PID cruising duty, 0-255
 float KP = 0.30, KI = 0.0, KD = 2.0;  // flip KP/KD sign if it steers away from the line
 float SLOW = 0.0;              // PID corner slowdown: cruise = base - slow * |err|  (0 = off)
 int MIN_SPEED = 80;            // cruise never drops below this in a corner
+int TURN = 510;                // max steering |corr|; lower = gentler corners (510 = no cap)
 int AO_OFFSET = 0;             // add to right AO so both read equal on white
 bool paused = false;
 bool quiet = false;            // "q": silence status lines, e.g. before uploading over USB/IP
@@ -36,7 +37,7 @@ bool tui = false;              // "tui": the tuner is connected, so never mute (
 const unsigned long BOOT_DELAY_MS = 1000;
 
 // ---- EEPROM ----
-const byte MAGIC = 0x43;       // change this if you add/reorder saved values, so old data is ignored
+const byte MAGIC = 0x44;       // change this if you add/reorder saved values, so old data is ignored
 
 template <typename T> void io(int &addr, T &v, bool save) {
   if (save) EEPROM.put(addr, v); else EEPROM.get(addr, v);
@@ -47,7 +48,7 @@ void storeSettings(bool save) {
   int a = 1;                   // byte 0 holds MAGIC
   io(a, KP, save); io(a, KI, save); io(a, KD, save);
   io(a, BASE_SPEED, save); io(a, BANG_SPEED, save); io(a, AO_OFFSET, save); io(a, mode, save);
-  io(a, SLOW, save); io(a, MIN_SPEED, save);
+  io(a, SLOW, save); io(a, MIN_SPEED, save); io(a, TURN, save);
   if (save) EEPROM.update(0, MAGIC);
 }
 
@@ -94,6 +95,7 @@ void showSettings() {
   Serial.print(" base "); Serial.print(BASE_SPEED);
   Serial.print(" slow "); Serial.print(SLOW, 3);
   Serial.print(" min "); Serial.print(MIN_SPEED);
+  Serial.print(" turn "); Serial.print(TURN);
   Serial.print(" bang "); Serial.print(BANG_SPEED);
   Serial.print(" off "); Serial.println(AO_OFFSET);
 }
@@ -125,6 +127,7 @@ void handleCommand() {
     Serial.println("base <0-255>  PID cruising speed");
     Serial.println("slow <n>      PID corner slowdown per unit of |err|, 0 = off");
     Serial.println("min <0-255>   lowest PID cruise speed in corners");
+    Serial.println("turn <0-510>  max PID steering; lower = gentler corners");
     Serial.println("bang <0-255>  bang-bang speed");
     Serial.println("off <n>       added to right AO, e.g. off -3");
     Serial.println("d             wipe saved settings (code defaults after reset)");
@@ -135,6 +138,7 @@ void handleCommand() {
   else if (hasValue && key == "base") { BASE_SPEED = constrain((int)v, 0, 255); save = true; }
   else if (hasValue && key == "slow") { SLOW = max(v, 0.0f); save = true; }
   else if (hasValue && key == "min") { MIN_SPEED = constrain((int)v, 0, 255); save = true; }
+  else if (hasValue && key == "turn") { TURN = constrain((int)v, 0, 510); save = true; }
   else if (hasValue && key == "bang") { BANG_SPEED = constrain((int)v, 0, 255); save = true; }
   else if (hasValue && key == "off") { AO_OFFSET = (int)v; save = true; }
   else { Serial.print("?? "); Serial.println(cmd); return; }
@@ -170,7 +174,7 @@ void loop() {
     } else if (millis() - lastT >= 10) {   // fixed 10 ms step, so gains don't need dt
       lastT = millis();
       integral = constrain(integral + err, -2000, 2000);
-      float corr = KP * err + KI * integral + KD * (err - lastErr);
+      float corr = constrain(KP * err + KI * integral + KD * (err - lastErr), -TURN, TURN);
       lastErr = err;
       cruise = constrain(BASE_SPEED - SLOW * fabs(err), min(MIN_SPEED, BASE_SPEED), BASE_SPEED);
       drive(cruise - corr, cruise + corr);
