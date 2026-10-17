@@ -99,6 +99,7 @@ class Tuner(App):
     #top { height: 13; }
     Settings { width: 34; border: round $accent; border-title-align: left; padding: 0 1; }
     #live { border: round $accent; padding: 0 1; }
+    #live.lost { border: round $error; }
     #livetext { height: 3; }
     Sparkline { height: 5; margin-top: 1; }
     #notes { border: round $accent; padding: 0 1; height: 1fr; }
@@ -147,9 +148,14 @@ class Tuner(App):
                         ser.write(b"tui\n")
                         booted, self.ser = True, ser
                         self.call_from_thread(self.set_msg, "connected over Wi-Fi (car not paused)")
-                    # ponytail: a Wi-Fi drop without a TCP close just freezes the live panel; add a read watchdog if it bites
+                    last = time.time()
                     while True:
-                        buf += ser.read(4096).decode("utf-8", "replace")
+                        data = ser.read(4096)
+                        if data:
+                            last = time.time()
+                        elif port == WIFI and time.time() - last > 2:  # status comes every 100 ms; Wi-Fi drops don't close the socket
+                            raise serial.SerialException("no data for 2 s")
+                        buf += data.decode("utf-8", "replace")
                         *lines, buf = buf.split("\n")
                         for line in lines:
                             line = line.strip()
@@ -204,6 +210,7 @@ class Tuner(App):
             self.paused = state == "PAUSED"
             self.errs = (self.errs + [float(f.get("err", 0))])[-100:]
             self.query_one(Sparkline).data = self.errs
+            self.query_one("#live").remove_class("lost")
             self.query_one("#livetext").update(
                 f"[b]{self.mode}  {state}[/b]\n"
                 f"L_AO {f.get('L_AO')}  R_AO {f.get('R_AO')}   DO {f.get('L_DO')}/{f.get('R_DO')}   err {f.get('err')}\n"
@@ -212,8 +219,9 @@ class Tuner(App):
             self.set_msg(line)
 
     def disconnected(self):
-        self.query_one("#livetext").update("waiting for robot… plug in the USB or join Wi-Fi LineFollower")
-        self.set_msg("disconnected")
+        self.query_one("#live").add_class("lost")
+        self.query_one("#livetext").update("[b red]DISCONNECTED[/] — reconnecting…\nplug in the USB or join Wi-Fi LineFollower")
+        self.set_msg("[b red]disconnected[/]")
 
     def set_msg(self, text):
         self.query_one("#msg").update(text)
