@@ -174,6 +174,13 @@ class Tuner(App):
 
     # ---- UI (main thread) ----
     def handle_line(self, line):
+        # serial noise garbles lines; an exception here would kill the serial thread via call_from_thread
+        try:
+            self.parse_line(line)
+        except (ValueError, IndexError):
+            self.set_msg(f"garbled: {line}")
+
+    def parse_line(self, line):
         if " | kp " in line:  # settings reply: "[saved: ]mode PID PAUSED | kp 1.200 ki ..."
             head, tail = line.split("|", 1)
             words = head.replace("saved:", "").split()
