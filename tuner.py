@@ -24,6 +24,7 @@ from textual.widgets import Footer, Input, Sparkline, Static
 
 BAUD = 115200
 CH340_VID = 0x1A86
+WIFI = "socket://192.168.4.1:23"  # wifi_bridge on the ESP8266; join Wi-Fi "LineFollower" first
 LOG = Path(__file__).with_name("tuning-log.md")
 LOG_HEADER = "# Tuning log\n\n| Time | Mode | Settings | Note |\n|---|---|---|---|\n"
 
@@ -38,7 +39,7 @@ def find_port():
         if p.vid == CH340_VID:
             return p.device
     # ponytail: fallback for a non-CH340 Uno; add its VID above if it ever matters
-    return next((p.device for p in ports if "usbserial" in p.device or "usbmodem" in p.device), None)
+    return next((p.device for p in ports if "usbserial" in p.device or "usbmodem" in p.device), WIFI)
 
 
 def fmt(name, value):
@@ -111,7 +112,7 @@ class Tuner(App):
         with Horizontal(id="top"):
             yield Settings(id="settings")
             with Vertical(id="live"):
-                yield Static("waiting for robot… plug in the USB", id="livetext")
+                yield Static("waiting for robot… plug in the USB or join Wi-Fi LineFollower", id="livetext")
                 yield Sparkline([0], id="graph")
         yield Static(id="notes")
         yield Static(id="msg")
@@ -139,9 +140,14 @@ class Tuner(App):
                 time.sleep(1)
                 continue
             try:
-                with serial.Serial(port, BAUD, timeout=0.1) as ser:  # opening resets the Uno
+                with serial.serial_for_url(port, BAUD, timeout=0.1) as ser:  # USB: opening resets the Uno
                     self.call_from_thread(self.set_msg, f"connected {port}, waiting for boot…")
                     buf, booted, t0 = "", False, time.time()
+                    if port == WIFI:  # no reset over Wi-Fi: watch it drive, don't pause it
+                        ser.write(b"tui\n")
+                        booted, self.ser = True, ser
+                        self.call_from_thread(self.set_msg, "connected over Wi-Fi (car not paused)")
+                    # ponytail: a Wi-Fi drop without a TCP close just freezes the live panel; add a read watchdog if it bites
                     while True:
                         buf += ser.read(4096).decode("utf-8", "replace")
                         *lines, buf = buf.split("\n")
@@ -206,7 +212,7 @@ class Tuner(App):
             self.set_msg(line)
 
     def disconnected(self):
-        self.query_one("#livetext").update("waiting for robot… plug in the USB")
+        self.query_one("#livetext").update("waiting for robot… plug in the USB or join Wi-Fi LineFollower")
         self.set_msg("disconnected")
 
     def set_msg(self, text):
