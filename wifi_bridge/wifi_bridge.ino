@@ -10,13 +10,13 @@
 
 // ponytail: software serial at 115200 can flip bits under Wi-Fi load; tuner skips garbled lines.
 // If it's bad, drop both sides to 57600.
-SoftwareSerial uno(D1, D2);  // rx, tx
+SoftwareSerial uno;
 WiFiServer server(23);
 WiFiClient client;
 
 void setup() {
   Serial.begin(115200);
-  uno.begin(115200);
+  uno.begin(115200, SWSERIAL_8N1, D1, D2, false, 256);  // rx, tx; default 64 B buffer overflowed on settings lines
   WiFi.mode(WIFI_AP);
   WiFi.softAP("LineFollower", AP_PASS);
   ArduinoOTA.setHostname("linefollower");
