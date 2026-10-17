@@ -24,7 +24,7 @@ from textual.widgets import Footer, Input, Sparkline, Static
 
 BAUD = 115200
 CH340_VID = 0x1A86
-WIFI = "socket://192.168.4.1:23"  # wifi_bridge on the ESP8266; join Wi-Fi "LineFollower" first
+WIFI = "socket://192.168.77.1:23"  # wifi_bridge on the ESP8266; join Wi-Fi "LineFollower" first
 LOG = Path(__file__).with_name("tuning-log.md")
 LOG_HEADER = "# Tuning log\n\n| Time | Mode | Settings | Note |\n|---|---|---|---|\n"
 

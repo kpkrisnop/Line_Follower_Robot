@@ -1,5 +1,5 @@
 // ESP8266 Wi-Fi bridge for the line follower.
-// Makes AP "LineFollower" (192.168.4.1) and pipes TCP port 23 <-> the UNO's serial,
+// Makes AP "LineFollower" (192.168.77.1) and pipes TCP port 23 <-> the UNO's serial,
 // so tuner.py works over Wi-Fi. The ESP's own USB serial is bridged too (debug).
 // Wiring: ESP D1 <- UNO TX (through a divider/resistor, 5 V -> 3.3 V), ESP D2 -> UNO RX, GND-GND.
 // Updates to this sketch can go over Wi-Fi (ArduinoOTA, host "linefollower").
@@ -18,6 +18,8 @@ void setup() {
   Serial.begin(115200);
   uno.begin(115200, SWSERIAL_8N1, D1, D2, false, 256);  // rx, tx; default 64 B buffer overflowed on settings lines
   WiFi.mode(WIFI_AP);
+  IPAddress ip(192, 168, 77, 1);  // not the default 192.168.4.1: KP's home LAN is 192.168.4.x
+  WiFi.softAPConfig(ip, ip, IPAddress(255, 255, 255, 0));
   WiFi.softAP("LineFollower", AP_PASS);
   ArduinoOTA.setHostname("linefollower");
   ArduinoOTA.begin();
