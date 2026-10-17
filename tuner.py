@@ -30,7 +30,8 @@ LOG_HEADER = "# Tuning log\n\n| Time | Mode | Settings | Note |\n|---|---|---|--
 
 # name, step, decimals
 PARAMS = [("kp", 0.05, 3), ("kd", 0.05, 3), ("ki", 0.001, 3), ("base", 10, 0),
-          ("slow", 0.01, 3), ("min", 10, 0), ("turn", 10, 0), ("bang", 10, 0), ("off", 1, 0)]
+          ("slow", 0.01, 3), ("min", 10, 0), ("turn", 10, 0), ("bang", 10, 0), ("off", 1, 0),
+          ("stop", 10, 0), ("trim", 1, 0)]
 
 
 def find_port():
@@ -107,7 +108,7 @@ class Tuner(App):
     #entry { display: none; }
     """
     BINDINGS = [("space", "toggle_run", "run/pause"), ("m", "mode", "PID/bang"),
-                ("n", "note", "note"), ("escape", "cancel", "cancel"), ("ctrl+q", "quit", "quit")]
+                ("c", "cal", "calibrate sensors"), ("n", "note", "note"), ("escape", "cancel", "cancel"), ("ctrl+q", "quit", "quit")]
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="top"):
@@ -237,6 +238,10 @@ class Tuner(App):
 
     def action_mode(self):
         self.send("b" if self.mode == "PID" else "p")
+
+    def action_cal(self):
+        self.send("cal")
+        self.set_msg("calibrating 5 s: slide both sensors back and forth across the line")
 
     def open_input(self, kind, name=None):
         entry = self.query_one("#entry", Input)
