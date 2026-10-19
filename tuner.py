@@ -1,12 +1,15 @@
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["textual>=0.80", "pyserial>=3.5"]
+# dependencies = ["textual>=0.80", "pyserial>=3.5", "optuna>=4"]
 # ///
 """Line follower tuner. Run: uv run tuner.py   (or just: robot)
 
 Waits for the robot's USB, connects, pauses the car, and tunes it live.
 Every change is auto-saved to the robot's EEPROM by the firmware.
 Notes go to tuning-log.md next to this file, with the settings at that moment.
+In lap mode ("lap 1") every finished lap is logged there too.
+Autotune ("a"): Optuna tries kp/kd/ki on the loop; each trial skips the lap in progress
+when the values change and scores the next full lap.
 """
 import re
 import threading
@@ -14,6 +17,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import optuna
 import serial
 from serial.tools import list_ports
 from rich.text import Text
@@ -30,8 +34,16 @@ LOG_HEADER = "# Tuning log\n\n| Time | Mode | Settings | Note |\n|---|---|---|--
 
 # name, step, decimals
 PARAMS = [("kp", 0.05, 3), ("kd", 0.05, 3), ("ki", 0.001, 3), ("base", 10, 0),
-          ("slow", 0.01, 3), ("min", 10, 0), ("turn", 10, 0), ("bang", 10, 0), ("off", 1, 0),
-          ("stop", 10, 0), ("trim", 1, 0)]
+          ("slow", 0.01, 3), ("expo", 0.1, 2), ("min", 10, 0), ("turn", 10, 0), ("bang", 10, 0),
+          ("off", 1, 0), ("stop", 10, 0), ("trim", 1, 0), ("lap", 1, 0), ("marks", 1, 0),
+          ("mark", 10, 0)]
+
+# Autotune. ponytail: edit here, not in the app; add in-app editing if these change often
+AUTO = {"kp": (0.3, 2.0, 0.01), "kd": (0.0, 2.0, 0.01), "ki": (0.0, 0.1, 0.001)}  # low, high, step
+AUTO_TRIALS = 30
+RMS_WEIGHT = 0.01       # score = lap seconds + RMS_WEIGHT * RMS err over that lap
+OFFTRACK_SCORE = 60.0   # score for a trial that leaves the track
+optuna.logging.set_verbosity(optuna.logging.WARNING)  # its log lines would scribble over the TUI
 
 
 def find_port():
@@ -97,18 +109,20 @@ class Settings(Widget, can_focus=True):
 class Tuner(App):
     CSS = """
     Screen { layout: vertical; }
-    #top { height: 13; }
-    Settings { width: 34; border: round $accent; border-title-align: left; padding: 0 1; }
+    #top { height: 17; }
+    Settings { width: 30; border: round $accent; border-title-align: left; padding: 0 1; }
     #live { border: round $accent; padding: 0 1; }
     #live.lost { border: round $error; }
-    #livetext { height: 3; }
+    #livetext { height: 4; }
+    #auto { width: 38; border: round $accent; padding: 0 1; }
     Sparkline { height: 5; margin-top: 1; }
     #notes { border: round $accent; padding: 0 1; height: 1fr; }
     #msg { height: 1; padding: 0 1; color: $text-muted; }
     #entry { display: none; }
     """
     BINDINGS = [("space", "toggle_run", "run/pause"), ("m", "mode", "PID/bang"),
-                ("c", "cal", "calibrate sensors"), ("n", "note", "note"), ("escape", "cancel", "cancel"), ("ctrl+q", "quit", "quit")]
+                ("c", "cal", "calibrate sensors"), ("n", "note", "note"), ("a", "autotune", "autotune"),
+                ("escape", "cancel", "cancel"), ("ctrl+q", "quit", "quit")]
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="top"):
@@ -116,6 +130,7 @@ class Tuner(App):
             with Vertical(id="live"):
                 yield Static("waiting for robot… plug in the USB or join Wi-Fi LineFollower", id="livetext")
                 yield Sparkline([0], id="graph")
+            yield Static(id="auto")
         yield Static(id="notes")
         yield Static(id="msg")
         yield Input(id="entry")
@@ -125,13 +140,19 @@ class Tuner(App):
         self.ser = None
         self.mode = None
         self.paused = None
+        self.state = None
         self.errs = []
         self.entry_kind = None
+        self.laps, self.lap_errs, self.best_lap = 0, [], None
+        self.study = self.trial = None   # autotune is on while study is set
+        self.trial_laps = 0              # laps finished since this trial's values were sent
         self.query_one("#settings").border_title = "Settings"
         self.query_one("#live").border_title = "Live (err graph, last 10 s)"
-        self.query_one("#notes").border_title = "Recent notes  (tuning-log.md)"
+        self.query_one("#auto").border_title = "Autotune"
+        self.query_one("#notes").border_title = "Notes & laps  (tuning-log.md)"
         self.query_one("#settings").focus()
         self.show_notes()
+        self.show_auto()
         threading.Thread(target=self.serial_loop, daemon=True).start()
 
     # ---- serial (background thread) ----
@@ -206,18 +227,120 @@ class Tuner(App):
             self.set_msg(line)
         elif "L_spd:" in line:
             f = dict(re.findall(r"(\w+):(-?[\d.]+)", line))
-            state = line.split()[-1] if line.split()[-1] in ("PAUSED", "STOP", "WAIT") else "RUNNING"
+            last = line.split()[-1]
+            state = last if last in ("PAUSED", "STOP", "WAIT", "OFFTRACK") else "RUNNING"
             self.mode = line.split()[0]
             self.paused = state == "PAUSED"
-            self.errs = (self.errs + [float(f.get("err", 0))])[-100:]
+            err = float(f.get("err", 0))
+            self.errs = (self.errs + [err])[-100:]
             self.query_one(Sparkline).data = self.errs
             self.query_one("#live").remove_class("lost")
+            laps_line = ""
+            if "laps" in f:  # lap mode
+                self.track_laps(f, err, state)
+                best = f"{self.best_lap:.2f}" if self.best_lap else "—"
+                laps_line = (f"\nlap {int(f['laps']) + 1}  last {int(f['lap']) / 1000:.2f}  best {best}"
+                             f"  split {int(f['split']) / 1000:.2f}  cp {f['cp']}")
+            self.state = state
             self.query_one("#livetext").update(
                 f"[b]{self.mode}  {state}[/b]\n"
                 f"L_AO {f.get('L_AO')}  R_AO {f.get('R_AO')}   DO {f.get('L_DO')}/{f.get('R_DO')}   err {f.get('err')}\n"
-                f"cruise {f.get('cruise')}   L_spd {f.get('L_spd')}  R_spd {f.get('R_spd')}")
+                f"cruise {f.get('cruise')}   L_spd {f.get('L_spd')}  R_spd {f.get('R_spd')}{laps_line}")
         else:
             self.set_msg(line)
+
+    def track_laps(self, f, err, state):
+        laps = int(f["laps"])
+        if f["cp"] == "0":
+            self.lap_errs = []  # before the first mark after "run": not part of any lap
+        else:
+            self.lap_errs.append(err)
+        if laps > self.laps:
+            lap_s = int(f["lap"]) / 1000
+            rms = (sum(e * e for e in self.lap_errs) / max(len(self.lap_errs), 1)) ** 0.5
+            self.lap_errs = []
+            self.best_lap = min(self.best_lap or lap_s, lap_s)
+            self.on_lap(lap_s, rms)
+        self.laps = laps
+        if state == "OFFTRACK" and self.state != "OFFTRACK":
+            self.on_offtrack()
+
+    def on_lap(self, lap_s, rms):
+        note = f"lap {lap_s:.2f} s, rms err {rms:.0f}"
+        if self.study:
+            self.trial_laps += 1
+            self.show_auto()
+            if self.trial_laps >= 2:  # lap 1 was in progress when the values changed
+                score = lap_s + RMS_WEIGHT * rms
+                note = f"trial {self.trial.number + 1}: {note} → score {score:.2f}"
+                self.save_note(note)
+                self.study.tell(self.trial, score)
+                self.next_trial()
+                return
+        self.save_note(note)
+
+    def on_offtrack(self):
+        if not self.study:
+            return
+        self.save_note(f"trial {self.trial.number + 1}: OFFTRACK → score {OFFTRACK_SCORE:g}")
+        self.study.tell(self.trial, OFFTRACK_SCORE)
+        self.next_trial()
+        self.set_msg("[b]off track[/b] — put the car on the line, press space")
+
+    # ---- autotune ----
+    def action_autotune(self):
+        if self.study:
+            self.stop_autotune("stopped")
+            return
+        vals = self.query_one(Settings).values
+        if not self.ser or not all(k in vals for k in AUTO):
+            self.set_msg("autotune needs the robot connected")
+            return
+        self.study = optuna.create_study(direction="minimize")
+        # first trial = today's values, so the tuner starts from known-good and has a baseline
+        self.study.enqueue_trial({k: min(max(vals[k], lo), hi) for k, (lo, hi, _) in AUTO.items()})
+        self.send("p")
+        self.send("lap 1")
+        self.next_trial()
+
+    def next_trial(self):
+        if len(self.study.trials) >= AUTO_TRIALS:
+            self.stop_autotune("done")
+            return
+        self.trial = self.study.ask()
+        for k, (lo, hi, step) in AUTO.items():
+            self.set_param(k, self.trial.suggest_float(k, lo, hi, step=step))
+        self.trial_laps = 0
+        self.show_auto()
+
+    def stop_autotune(self, why):
+        best = self.best_trial()
+        if best:
+            for k, v in best.params.items():
+                self.set_param(k, v)
+        self.save_note(f"autotune {why}: " + (f"best trial {best.number + 1}, score {best.value:.2f}" if best else "no finished trials"))
+        self.study = self.trial = None
+        self.show_auto()
+
+    def best_trial(self):
+        try:
+            return self.study.best_trial
+        except ValueError:  # no finished trials yet
+            return None
+
+    def show_auto(self):
+        ranges = "\n".join(f"  {k} {lo:g}–{hi:g}" for k, (lo, hi, _) in AUTO.items())
+        text = f"[dim]score = lap s + {RMS_WEIGHT:g}×rms err\noff track = {OFFTRACK_SCORE:g}\n{ranges}[/dim]\n\n"
+        if not self.study:
+            self.query_one("#auto").update(text + f"off — [b]a[/b] starts {AUTO_TRIALS} trials\n(car running on the loop)")
+            return
+        phase = "warm-up lap" if self.trial_laps == 0 else "scoring lap"
+        cur = "  ".join(f"{k} {v:g}" for k, v in self.trial.params.items())
+        text += f"[b]trial {self.trial.number + 1}/{AUTO_TRIALS}[/b] · {phase}\n{cur}\n"
+        best = self.best_trial()
+        if best:
+            text += f"\n[b]best #{best.number + 1}  {best.value:.2f}[/b]\n" + "  ".join(f"{k} {v:g}" for k, v in best.params.items())
+        self.query_one("#auto").update(text + "\n\n[dim]a = stop, keep best[/dim]")
 
     def disconnected(self):
         self.query_one("#live").add_class("lost")
@@ -234,7 +357,7 @@ class Tuner(App):
         self.send(f"{name} {fmt(name, value)}")
 
     def action_toggle_run(self):
-        self.send("run" if self.paused else "pause")
+        self.send("run" if self.paused or self.state in ("OFFTRACK", "STOP") else "pause")
 
     def action_mode(self):
         self.send("b" if self.mode == "PID" else "p")
@@ -291,7 +414,7 @@ class Tuner(App):
         lines = []
         for r in reversed(rows[-8:]):
             time_, mode, settings, note = [c.strip() for c in r.strip("|").split("|", 3)]
-            lines.append(f"[b]{time_[5:]}[/b]  {mode:<5} {note}\n   [dim]{settings}[/dim]")
+            lines.append(f"[b]{time_[5:]}[/b] · {mode:<5} {note}\n   [dim]{settings}[/dim]")
         self.query_one("#notes").update("\n".join(lines) or "[dim]no notes yet — press n[/dim]")
 
 
