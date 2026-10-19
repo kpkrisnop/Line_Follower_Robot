@@ -111,10 +111,10 @@ class Tuner(App):
     Screen { layout: vertical; }
     #top { height: 17; }
     Settings { width: 30; border: round $accent; border-title-align: left; padding: 0 1; }
-    #live { border: round $accent; padding: 0 1; }
+    #live { height: 12; border: round $accent; padding: 0 1; }
     #live.lost { border: round $error; }
     #livetext { height: 4; }
-    #auto { width: 38; border: round $accent; padding: 0 1; }
+    #auto { width: 1fr; border: round $accent; padding: 0 1; }
     Sparkline { height: 5; margin-top: 1; }
     #notes { border: round $accent; padding: 0 1; height: 1fr; }
     #msg { height: 1; padding: 0 1; color: $text-muted; }
@@ -125,11 +125,11 @@ class Tuner(App):
                 ("escape", "cancel", "cancel"), ("ctrl+q", "quit", "quit")]
 
     def compose(self) -> ComposeResult:
+        with Vertical(id="live"):
+            yield Static("waiting for robot… plug in the USB or join Wi-Fi LineFollower", id="livetext")
+            yield Sparkline([0], id="graph")
         with Horizontal(id="top"):
             yield Settings(id="settings")
-            with Vertical(id="live"):
-                yield Static("waiting for robot… plug in the USB or join Wi-Fi LineFollower", id="livetext")
-                yield Sparkline([0], id="graph")
             yield Static(id="auto")
         yield Static(id="notes")
         yield Static(id="msg")
