@@ -258,6 +258,8 @@ class Tuner(App):
         self.show_notes()
         self.show_auto()
         self.show_help()
+        self.last_status = time.time()
+        self.set_interval(0.5, self.check_stale)
         threading.Thread(target=self.serial_loop, daemon=True).start()
 
     # ---- serial (background thread) ----
@@ -313,11 +315,12 @@ class Tuner(App):
 
     # ---- UI (main thread) ----
     def handle_line(self, line):
-        # serial noise garbles lines; an exception here would kill the serial thread via call_from_thread
+        # serial noise garbles lines (a cut-off status lacks fields → KeyError); any exception here
+        # would kill the serial thread via call_from_thread, freezing the screen with no warning
         try:
             self.parse_line(line)
-        except (ValueError, IndexError):
-            self.set_msg(f"garbled: {line}")
+        except Exception as e:
+            self.set_msg(f"garbled ({type(e).__name__}): {line}")
 
     def parse_line(self, line):
         if " | kp " in line:  # settings reply: "[saved: ]mode PID PAUSED | kp 1.200 ki ..."
@@ -341,6 +344,7 @@ class Tuner(App):
             self.query_one(Sparkline).data = self.errs
             self.query_one(Curve).refresh()  # moves the live |err| marker
             self.query_one("#live").remove_class("lost")
+            self.last_status = time.time()
             laps_line = ""
             if "laps" in f:  # lap mode
                 self.track_laps(f, err, state)
@@ -466,6 +470,13 @@ class Tuner(App):
         box = self.query_one("#help")
         box.border_title = f"About {name}"
         box.update(f"{HELP[name]}\n\n[dim]now {fmt(name, val) if val is not None else '—'} · step ±{step:g}[/dim]")
+
+    def check_stale(self):
+        # UI-side watchdog: catches a stuck or dead serial thread too, on USB as well as Wi-Fi
+        quiet = time.time() - self.last_status
+        if self.ser and quiet > 2 and not self.query_one("#live").has_class("lost"):
+            self.query_one("#live").add_class("lost")
+            self.set_msg(f"[b red]no status for {quiet:.0f} s[/] — link or tuner stuck; restart `robot` if it stays")
 
     def disconnected(self):
         self.query_one("#live").add_class("lost")

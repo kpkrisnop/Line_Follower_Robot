@@ -22,6 +22,8 @@ GARBAGE = [
     "saved: | kp 0.900",
     "PID L_DO:0 err:. L_spd:0",
     "mode PID PAUSED | kp 0.9x0 ki 0.000",
+    "PID L_DO:0 R_DO:0 L_AO:0 R_AO:0 err:0.00 cruise:100 L_spd:100 R_spd:100 cp:2 laps:1",  # KeyError froze the screen, 2026-10-19
+    "PID L_DO:0 R_DO:0 L_AO:0 R_AO:0 err:0.00 cruise:100 L_spd:100 R_spd:100 cp:2 laps:2 lap:6305 split:-",
 ]
 
 
