@@ -130,3 +130,61 @@
 | 2026-10-19 20:41 | PID | kp 1.900 kd 0.750 ki 0.029 base 100 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 330 minlap 2 | trial 3: lap 2.06 s, rms err 537 → score 7.43 |
 | 2026-10-19 20:41 | PID | kp 1.890 kd 1.660 ki 0.001 base 100 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 330 minlap 2 | lap 2.20 s, rms err 449 |
 | 2026-10-19 20:41 | PID | kp 1.890 kd 1.660 ki 0.001 base 100 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 330 minlap 2 | trial 4: lap 16.66 s, rms err 243 → score 19.09 |
+| 2026-10-19 20:45 | PID | kp 0.200 kd 0.000 ki 0.000 base 100 slow 0.300 expo 3.00 min 80 turn 350 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 330 minlap 2 | autotune stopped: no finished trials |
+| 2026-10-19 20:46 | PID | kp 0.200 kd 0.000 ki 0.000 base 100 slow 0.300 expo 3.00 min 80 turn 350 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 330 minlap 2 | lap 13.81 s, rms err 417 |
+| 2026-10-19 20:46 | PID | kp 0.200 kd 0.000 ki 0.000 base 100 slow 0.300 expo 3.00 min 80 turn 350 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 330 minlap 2 | trial 1: lap 14.57 s, rms err 479 → score 19.36 |
+| 2026-10-19 20:46 | PID | kp 0.310 kd 0.710 ki 0.089 base 100 slow 0.300 expo 3.00 min 80 turn 350 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 330 minlap 2 | lap 16.17 s, rms err 617 |
+| 2026-10-19 20:46 | PID | kp 0.310 kd 0.710 ki 0.089 base 100 slow 0.300 expo 3.00 min 80 turn 350 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | trial 2: lap 12.54 s, rms err 659 → score 19.12 |
+| 2026-10-19 20:47 | PID | kp 0.580 kd 0.580 ki 0.030 base 100 slow 0.300 expo 3.00 min 80 turn 350 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | lap 11.12 s, rms err 413 |
+| 2026-10-19 20:47 | PID | kp 0.580 kd 0.580 ki 0.030 base 100 slow 0.300 expo 3.00 min 80 turn 350 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | trial 3: lap 23.97 s, rms err 411 → score 28.09 |
+| 2026-10-19 20:47 | PID | kp 0.790 kd 0.880 ki 0.025 base 100 slow 0.300 expo 3.00 min 80 turn 350 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | lap 16.65 s, rms err 204 |
+| 2026-10-19 20:47 | PID | kp 0.790 kd 0.880 ki 0.025 base 100 slow 0.300 expo 3.00 min 80 turn 350 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | trial 4: lap 15.49 s, rms err 194 → score 17.43 |
+| 2026-10-19 20:48 | PID | kp 0.450 kd 0.230 ki 0.034 base 100 slow 0.300 expo 3.00 min 80 turn 350 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | lap 2.55 s, rms err 661 |
+| 2026-10-19 20:48 | PID | kp 0.450 kd 0.230 ki 0.034 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | trial 5: lap 37.39 s, rms err 691 → score 44.30 |
+| 2026-10-19 20:49 | PID | kp 0.220 kd 0.370 ki 0.090 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | lap 33.68 s, rms err 667 |
+| 2026-10-19 20:49 | PID | kp 0.220 kd 0.370 ki 0.090 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | trial 6: OFFTRACK → score 60 |
+| 2026-10-19 20:49 | PID | kp 0.540 kd 0.030 ki 0.023 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | lap 4.73 s, rms err 543 |
+| 2026-10-19 20:49 | PID | kp 0.540 kd 0.030 ki 0.023 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | trial 7: lap 4.21 s, rms err 447 → score 8.68 |
+| 2026-10-19 20:49 | PID | kp 0.390 kd 0.790 ki 0.026 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | lap 12.11 s, rms err 257 |
+| 2026-10-19 20:50 | PID | kp 0.390 kd 0.790 ki 0.026 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | trial 8: lap 15.54 s, rms err 286 → score 18.39 |
+| 2026-10-19 20:50 | PID | kp 0.270 kd 0.140 ki 0.085 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | trial 9: OFFTRACK → score 60 |
+| 2026-10-19 20:50 | PID | kp 0.590 kd 0.220 ki 0.004 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | lap 14.86 s, rms err 272 |
+| 2026-10-19 20:51 | PID | kp 0.590 kd 0.220 ki 0.004 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | trial 10: lap 16.24 s, rms err 264 → score 18.89 |
+| 2026-10-19 20:51 | PID | kp 0.170 kd 0.700 ki 0.050 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | lap 6.21 s, rms err 551 |
+| 2026-10-19 20:51 | PID | kp 0.170 kd 0.700 ki 0.050 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | trial 11: lap 3.13 s, rms err 501 → score 8.15 |
+| 2026-10-19 20:51 | PID | kp 0.180 kd 0.790 ki 0.055 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | lap 3.19 s, rms err 594 |
+| 2026-10-19 20:51 | PID | kp 0.180 kd 0.790 ki 0.055 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | trial 12: lap 15.51 s, rms err 571 → score 21.22 |
+| 2026-10-19 20:51 | PID | kp 0.270 kd 0.540 ki 0.000 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | lap 13.07 s, rms err 227 |
+| 2026-10-19 20:51 | PID | kp 0.270 kd 0.540 ki 0.000 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | trial 13: lap 12.70 s, rms err 227 → score 14.96 |
+| 2026-10-19 20:52 | PID | kp 0.690 kd 0.540 ki 0.073 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | lap 3.27 s, rms err 611 |
+| 2026-10-19 20:52 | PID | kp 0.690 kd 0.540 ki 0.073 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | trial 14: lap 2.44 s, rms err 712 → score 9.57 |
+| 2026-10-19 20:52 | PID | kp 0.320 kd 0.850 ki 0.050 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 2 | lap 2.72 s, rms err 540 |
+| 2026-10-19 20:52 | PID | kp 0.320 kd 0.850 ki 0.050 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | trial 15: lap 13.83 s, rms err 524 → score 19.07 |
+| 2026-10-19 20:52 | PID | kp 0.320 kd 0.740 ki 0.000 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | lap 12.80 s, rms err 204 |
+| 2026-10-19 20:52 | PID | kp 0.320 kd 0.740 ki 0.000 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | trial 16: lap 12.98 s, rms err 208 → score 15.07 |
+| 2026-10-19 20:52 | PID | kp 0.160 kd 0.260 ki 0.028 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | lap 6.28 s, rms err 524 |
+| 2026-10-19 20:52 | PID | kp 0.160 kd 0.260 ki 0.028 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | trial 17: lap 6.34 s, rms err 593 → score 12.27 |
+| 2026-10-19 20:53 | PID | kp 0.430 kd 0.470 ki 0.011 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | lap 13.59 s, rms err 223 |
+| 2026-10-19 20:53 | PID | kp 0.430 kd 0.470 ki 0.011 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | trial 18: lap 11.02 s, rms err 189 → score 12.91 |
+| 2026-10-19 20:53 | PID | kp 0.500 kd 0.670 ki 0.067 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | lap 5.62 s, rms err 500 |
+| 2026-10-19 20:53 | PID | kp 0.500 kd 0.670 ki 0.067 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | trial 19: OFFTRACK → score 60 |
+| 2026-10-19 20:53 | PID | kp 0.280 kd 0.090 ki 0.045 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | trial 20: OFFTRACK → score 60 |
+| 2026-10-19 20:54 | PID | kp 0.410 kd 0.090 ki 0.051 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | trial 21: OFFTRACK → score 60 |
+| 2026-10-19 20:54 | PID | kp 0.680 kd 0.300 ki 0.058 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | lap 14.85 s, rms err 640 |
+| 2026-10-19 20:55 | PID | kp 0.680 kd 0.300 ki 0.058 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | trial 22: lap 25.35 s, rms err 674 → score 32.10 |
+| 2026-10-19 20:55 | PID | kp 0.690 kd 0.000 ki 0.041 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | lap 27.94 s, rms err 683 |
+| 2026-10-19 20:56 | PID | kp 0.690 kd 0.000 ki 0.041 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | trial 23: lap 27.79 s, rms err 724 → score 35.04 |
+| 2026-10-19 20:56 | PID | kp 0.690 kd 0.580 ki 0.064 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | lap 24.72 s, rms err 639 |
+| 2026-10-19 20:57 | PID | kp 0.690 kd 0.580 ki 0.064 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | trial 24: lap 24.25 s, rms err 643 → score 30.68 |
+| 2026-10-19 20:57 | PID | kp 0.190 kd 0.610 ki 0.038 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | lap 22.05 s, rms err 548 |
+| 2026-10-19 20:57 | PID | kp 0.190 kd 0.610 ki 0.038 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | trial 25: lap 21.41 s, rms err 530 → score 26.71 |
+| 2026-10-19 20:58 | PID | kp 0.560 kd 0.430 ki 0.085 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | trial 26: OFFTRACK → score 60 |
+| 2026-10-19 20:58 | PID | kp 0.620 kd 0.930 ki 0.082 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | lap 23.93 s, rms err 622 |
+| 2026-10-19 20:59 | PID | kp 0.620 kd 0.930 ki 0.082 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | trial 27: lap 23.67 s, rms err 641 → score 30.07 |
+| 2026-10-19 20:59 | PID | kp 0.790 kd 0.000 ki 0.068 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | trial 28: OFFTRACK → score 60 |
+| 2026-10-19 21:00 | PID | kp 0.600 kd 0.720 ki 0.088 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | trial 29: OFFTRACK → score 60 |
+| 2026-10-19 21:01 | PID | kp 0.440 kd 0.060 ki 0.021 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | lap 25.18 s, rms err 635 |
+| 2026-10-19 21:01 | PID | kp 0.440 kd 0.060 ki 0.021 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | trial 30: lap 25.30 s, rms err 611 → score 31.41 |
+| 2026-10-19 21:01 | PID | kp 0.170 kd 0.700 ki 0.050 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | autotune done: best trial 11, score 8.15 |
+| 2026-10-19 21:01 | PID | kp 0.170 kd 0.700 ki 0.050 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | lap 22.33 s, rms err 581 |
+| 2026-10-19 21:02 | PID | kp 0.170 kd 0.700 ki 0.050 base 100 slow 0.300 expo 3.00 min 80 turn 250 bang 80 off 0 stop 500 trim 0 lap 1 marks 2 mark 500 minlap 5 | lap 20.55 s, rms err 564 |
