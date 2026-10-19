@@ -37,6 +37,7 @@ int TRIM = 0;                  // motor balance in %: >0 slows the left motor, <
 bool LAP = false;              // false = stop on the first stop line (competition); true = count laps on a loop
 int MARKS = 1;                 // checkpoint marks per lap
 int MARK_MS = 300;             // both black for less than this = a checkpoint mark
+int MIN_LAP = 2;               // s; a mark sooner than MIN_LAP/MARKS after the last one is noise (corner blips)
 const unsigned long OFFTRACK_MS = 1000;  // both black this long = off the track
 int calMin[2] = {0, 0}, calMax[2] = {1023, 1023};  // raw AO on white / black per sensor, set by "cal"
 bool paused = false;
@@ -62,6 +63,7 @@ void storeSettings(bool save) {
   io(a, SLOW, save); io(a, MIN_SPEED, save); io(a, TURN, save);
   io(a, STOP_LEVEL, save); io(a, TRIM, save); io(a, calMin, save); io(a, calMax, save);
   io(a, EXPO, save); io(a, LAP, save); io(a, MARKS, save); io(a, MARK_MS, save);
+  io(a, MIN_LAP, save);  // appended, MAGIC kept: older EEPROM reads 0xFFFF here, fixed in setup()
   if (save) EEPROM.update(0, MAGIC);
 }
 
@@ -92,6 +94,7 @@ void setup() {
   Serial.setTimeout(20);       // so reading a command line doesn't stall the control loop
   bool saved = EEPROM.read(0) == MAGIC;
   if (saved) storeSettings(false);
+  if (MIN_LAP < 0 || MIN_LAP > 60) MIN_LAP = 2;  // saved before minlap existed
   Serial.println(saved ? "Loaded saved settings. Send ? for commands" : "Code defaults. Send ? for commands");
 }
 
@@ -133,6 +136,7 @@ int cp;                        // checkpoints since "run"
 unsigned long lapStart, splitStart, lastLap, lastSplit;  // ms
 
 void checkpoint(unsigned long now) {
+  if (cp > 0 && now - splitStart < MIN_LAP * 1000UL / MARKS) return;  // too soon: not a real mark
   if (cp > 0) lastSplit = now - splitStart;
   splitStart = now;
   if (cp % MARKS == 0) {       // a lap boundary; the first mark after "run" starts lap 1
@@ -161,7 +165,8 @@ void showSettings() {
   Serial.print(F(" trim ")); Serial.print(TRIM);
   Serial.print(F(" lap ")); Serial.print(LAP);
   Serial.print(F(" marks ")); Serial.print(MARKS);
-  Serial.print(F(" mark ")); Serial.println(MARK_MS);
+  Serial.print(F(" mark ")); Serial.print(MARK_MS);
+  Serial.print(F(" minlap ")); Serial.println(MIN_LAP);
 }
 
 void handleCommand() {
@@ -203,6 +208,7 @@ void handleCommand() {
     Serial.println(F("lap 0|1       0 = stop on stop line, 1 = loop: time laps, stop only off track"));
     Serial.println(F("marks <n>     checkpoint marks per lap"));
     Serial.println(F("mark <ms>     both black shorter than this = a mark"));
+    Serial.println(F("minlap <s>    ignore marks sooner than minlap/marks s after the last"));
     Serial.println(F("cal           5 s: slide both sensors across the line by hand"));
     Serial.println(F("d             wipe saved settings (code defaults after reset)"));
   }
@@ -221,6 +227,7 @@ void handleCommand() {
   else if (hasValue && key == "lap") { LAP = v != 0; save = true; }
   else if (hasValue && key == "marks") { MARKS = constrain((int)v, 1, 20); save = true; }
   else if (hasValue && key == "mark") { MARK_MS = constrain((int)v, 20, 999); save = true; }
+  else if (hasValue && key == "minlap") { MIN_LAP = constrain((int)v, 0, 60); save = true; }
   else if (key == "cal") { save = calibrate(); paused = true; }  // you're holding the car
   else { Serial.print(F("?? ")); Serial.println(cmd); return; }
 

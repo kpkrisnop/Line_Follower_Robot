@@ -39,7 +39,7 @@ TELEM_FIELDS = ["L_DO", "R_DO", "L_AO", "R_AO", "err", "cruise", "L_spd", "R_spd
 PARAMS = [("kp", 0.05, 3), ("kd", 0.05, 3), ("ki", 0.001, 3), ("base", 10, 0),
           ("slow", 0.01, 3), ("expo", 0.1, 2), ("min", 10, 0), ("turn", 10, 0), ("bang", 10, 0),
           ("off", 1, 0), ("stop", 10, 0), ("trim", 1, 0), ("lap", 1, 0), ("marks", 1, 0),
-          ("mark", 10, 0)]
+          ("mark", 10, 0), ("minlap", 1, 0)]
 HELP = {
     "kp": "Proportional gain: steering = kp × err. Higher turns harder towards the line; too high zigzags on straights.",
     "kd": "Derivative gain, on the change in err per 10 ms step. Damps wobble. Too high relative to kp makes it twitchy.",
@@ -60,6 +60,7 @@ HELP = {
            "stop only when off track (black ≥ 1 s).",
     "marks": "Tape marks per lap. The first mark after run starts lap 1.",
     "mark": "Both black for less than this many ms = a checkpoint mark. 1 s or more = off track.",
+    "minlap": "Shortest real lap, s. A mark sooner than minlap/marks s after the last counted one is ignored (corner blips). 0 = off.",
 }
 
 # Autotune. ponytail: edit here, not in the app; add in-app editing if these change often
@@ -205,7 +206,7 @@ class Tuner(App):
     Screen { layout: vertical; layers: base doc; }
     #doc { layer: doc; display: none; width: 100%; height: 100%; border: round $accent;
            border-title-align: left; background: $surface; }
-    #top { height: 17; }
+    #top { height: 18; }
     Settings { width: 30; border: round $accent; border-title-align: left; padding: 0 1; }
     #live { height: 12; border: round $accent; padding: 0 1; }
     #live.lost { border: round $error; }
