@@ -37,6 +37,27 @@ PARAMS = [("kp", 0.05, 3), ("kd", 0.05, 3), ("ki", 0.001, 3), ("base", 10, 0),
           ("slow", 0.01, 3), ("expo", 0.1, 2), ("min", 10, 0), ("turn", 10, 0), ("bang", 10, 0),
           ("off", 1, 0), ("stop", 10, 0), ("trim", 1, 0), ("lap", 1, 0), ("marks", 1, 0),
           ("mark", 10, 0)]
+HELP = {
+    "kp": "Proportional gain: steering = kp × err. Higher turns harder towards the line; too high zigzags on straights.",
+    "kd": "Derivative gain, on the change in err per 10 ms step. Damps wobble. Too high relative to kp makes it twitchy.",
+    "ki": "Integral gain. err is summed (clamped ±2000, reset on every command), so it can add at most ki × 2000. "
+          "Helps hold tight turns; too much overshoots after a corner.",
+    "base": "Cruise speed on straights (PWM 0–255).",
+    "slow": "Corner slowdown strength: cruise = base − slow·1000·(|err|/1000)^expo. 0 = off. Curve on the right →",
+    "expo": "Shape of the slowdown curve. 1 = linear; >1 barely slows for small err and brakes hard in corners; "
+            "<1 slows early.",
+    "min": "Lowest cruise in corners: the floor of the curve. Above base = no slowdown at all.",
+    "turn": "Max |steering| (0–510). 510 = no cap. Lower stops both wheels saturating in corners.",
+    "bang": "Wheel speed in bang-bang mode (m switches mode).",
+    "off": "Added to the right sensor reading. Set it on white so err ≈ 0 with the car centred.",
+    "stop": "Both sensors above this (calibrated 0–1000) = black. lap 0: stop line. lap 1: mark or off track. "
+            "1001 = never.",
+    "trim": "Motor balance %. >0 slows the left motor, <0 the right. Set it on a straight until err averages 0.",
+    "lap": "0 = stop on the first stop line (competition). 1 = closed loop: count marks, time laps, "
+           "stop only when off track (black ≥ 1 s).",
+    "marks": "Tape marks per lap. The first mark after run starts lap 1.",
+    "mark": "Both black for less than this many ms = a checkpoint mark. 1 s or more = off track.",
+}
 
 # Autotune. ponytail: edit here, not in the app; add in-app editing if these change often
 AUTO = {"kp": (0.3, 2.0, 0.01), "kd": (0.0, 2.0, 0.01), "ki": (0.0, 0.1, 0.001)}  # low, high, step
@@ -78,9 +99,14 @@ class Settings(Widget, can_focus=True):
             t.append(line, style="reverse" if i == self.row and self.has_focus else "")
         return t
 
+    def changed(self):  # row or a value changed: redraw this and the boxes that depend on it
+        self.refresh()
+        self.app.show_help()
+        self.app.query_one(Curve).refresh()
+
     def action_move(self, d):
         self.row = (self.row + d) % len(PARAMS)
-        self.refresh()
+        self.changed()
 
     def action_nudge(self, d):
         name, step, dec = PARAMS[self.row]
@@ -97,13 +123,41 @@ class Settings(Widget, can_focus=True):
             if row == self.row:
                 self.action_edit()
             self.row = row
-            self.refresh()
+            self.changed()
 
     def on_focus(self):
         self.refresh()
 
     def on_blur(self):
         self.refresh()
+
+
+class Curve(Widget):
+    """Corner slowdown: cruise vs |err|, as the firmware computes it; live |err| highlighted."""
+
+    def render(self):
+        v = self.app.query_one(Settings).values
+        if not all(k in v for k in ("base", "slow", "expo", "min")):
+            return Text("waiting for settings…", style="dim")
+        base, slow, expo = v["base"], v["slow"], v["expo"]
+        floor = min(v["min"], base)
+        cols, rows = self.size.width - 5, self.size.height - 1  # 5 = y labels, 1 = x axis
+        if cols < 2 or rows < 1 or base <= 0:
+            return Text()
+        heights = [max(floor, min(base, base - slow * 1000 * (x / (cols - 1)) ** expo)) / base * rows * 8
+                   for x in range(cols)]
+        errs = self.app.errs
+        hl = round(min(abs(errs[-1]), 1000) / 1000 * (cols - 1)) if errs else -1
+        t = Text()
+        for r in range(rows):
+            t.append(f"{base:>4.0f}│" if r == 0 else "   0│" if r == rows - 1 else "    │", style="dim")
+            for x, h in enumerate(heights):
+                fill = h - (rows - 1 - r) * 8  # eighths of this cell that are filled
+                ch = " " if fill <= 0 else "█" if fill >= 8 else " ▁▂▃▄▅▆▇"[int(fill)]
+                t.append(ch, style="bold red" if x == hl else "dodger_blue2")
+            t.append("\n")
+        t.append("     0" + "|err|".center(cols - 5) + "1000", style="dim")
+        return t
 
 
 class Tuner(App):
@@ -114,7 +168,8 @@ class Tuner(App):
     #live { height: 12; border: round $accent; padding: 0 1; }
     #live.lost { border: round $error; }
     #livetext { height: 4; }
-    #auto { width: 1fr; border: round $accent; padding: 0 1; }
+    #auto { height: 7; border: round $accent; padding: 0 1; }
+    #help, Curve { width: 1fr; height: 1fr; border: round $accent; padding: 0 1; }
     Sparkline { height: 5; margin-top: 1; }
     #notes { border: round $accent; padding: 0 1; height: 1fr; }
     #msg { height: 1; padding: 0 1; color: $text-muted; }
@@ -130,7 +185,11 @@ class Tuner(App):
             yield Sparkline([0], id="graph")
         with Horizontal(id="top"):
             yield Settings(id="settings")
-            yield Static(id="auto")
+            with Vertical():
+                yield Static(id="auto")
+                with Horizontal():
+                    yield Static(id="help")
+                    yield Curve(id="curve")
         yield Static(id="notes")
         yield Static(id="msg")
         yield Input(id="entry")
@@ -149,10 +208,12 @@ class Tuner(App):
         self.query_one("#settings").border_title = "Settings"
         self.query_one("#live").border_title = "Live (err graph, last 10 s)"
         self.query_one("#auto").border_title = "Autotune"
+        self.query_one(Curve).border_title = "Slowdown curve: cruise vs |err|"
         self.query_one("#notes").border_title = "Notes & laps  (tuning-log.md)"
         self.query_one("#settings").focus()
         self.show_notes()
         self.show_auto()
+        self.show_help()
         threading.Thread(target=self.serial_loop, daemon=True).start()
 
     # ---- serial (background thread) ----
@@ -223,7 +284,7 @@ class Tuner(App):
             settings = self.query_one(Settings)
             for k, v in zip(vals[::2], vals[1::2]):
                 settings.values[k] = float(v)
-            settings.refresh()
+            settings.changed()
             self.set_msg(line)
         elif "L_spd:" in line:
             f = dict(re.findall(r"(\w+):(-?[\d.]+)", line))
@@ -234,6 +295,7 @@ class Tuner(App):
             err = float(f.get("err", 0))
             self.errs = (self.errs + [err])[-100:]
             self.query_one(Sparkline).data = self.errs
+            self.query_one(Curve).refresh()  # moves the live |err| marker
             self.query_one("#live").remove_class("lost")
             laps_line = ""
             if "laps" in f:  # lap mode
@@ -329,18 +391,24 @@ class Tuner(App):
             return None
 
     def show_auto(self):
-        ranges = "\n".join(f"  {k} {lo:g}–{hi:g}" for k, (lo, hi, _) in AUTO.items())
-        text = f"[dim]score = lap s + {RMS_WEIGHT:g}×rms err\noff track = {OFFTRACK_SCORE:g}\n{ranges}[/dim]\n\n"
+        ranges = "  ".join(f"{k} {lo:g}–{hi:g}" for k, (lo, hi, _) in AUTO.items())
+        text = f"[dim]score = lap s + {RMS_WEIGHT:g}×rms err · off track {OFFTRACK_SCORE:g}\n{ranges}[/dim]\n"
         if not self.study:
-            self.query_one("#auto").update(text + f"off — [b]a[/b] starts {AUTO_TRIALS} trials\n(car running on the loop)")
+            self.query_one("#auto").update(text + f"off — [b]a[/b] starts {AUTO_TRIALS} trials (car running on the loop)")
             return
+        vals = lambda params: "  ".join(f"{k} {v:g}" for k, v in params.items())
         phase = "warm-up lap" if self.trial_laps == 0 else "scoring lap"
-        cur = "  ".join(f"{k} {v:g}" for k, v in self.trial.params.items())
-        text += f"[b]trial {self.trial.number + 1}/{AUTO_TRIALS}[/b] · {phase}\n{cur}\n"
+        text += f"[b]trial {self.trial.number + 1}/{AUTO_TRIALS}[/b] · {phase}   {vals(self.trial.params)}\n"
         best = self.best_trial()
-        if best:
-            text += f"\n[b]best #{best.number + 1}  {best.value:.2f}[/b]\n" + "  ".join(f"{k} {v:g}" for k, v in best.params.items())
-        self.query_one("#auto").update(text + "\n\n[dim]a = stop, keep best[/dim]")
+        text += f"[b]best #{best.number + 1} {best.value:.2f}[/b]   {vals(best.params)}\n" if best else "best —\n"
+        self.query_one("#auto").update(text + "[dim]a = stop, keep best[/dim]")
+
+    def show_help(self):
+        name, step, _ = PARAMS[self.query_one(Settings).row]
+        val = self.query_one(Settings).values.get(name)
+        box = self.query_one("#help")
+        box.border_title = f"About {name}"
+        box.update(f"{HELP[name]}\n\n[dim]now {fmt(name, val) if val is not None else '—'} · step ±{step:g}[/dim]")
 
     def disconnected(self):
         self.query_one("#live").add_class("lost")
@@ -353,7 +421,7 @@ class Tuner(App):
     def set_param(self, name, value):
         settings = self.query_one(Settings)
         settings.values[name] = value
-        settings.refresh()
+        settings.changed()
         self.send(f"{name} {fmt(name, value)}")
 
     def action_toggle_run(self):
