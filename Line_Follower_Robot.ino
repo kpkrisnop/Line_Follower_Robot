@@ -4,6 +4,8 @@
 // Two control modes in one sketch: PID (analog sensors) and bang-bang (digital sensors).
 // Tune live from the Serial Monitor (115200 baud, line ending "Newline"); send "?" for the list.
 // Both sensors above the "stop" level = stop line: the car stops and beeps.
+// "lap 1" (closed loop): short black crossings are checkpoint marks, timed into laps and
+// splits instead; black for 1 s or more = off the track (dark floor): stop until "run".
 // "cal" learns each sensor's own white/black readings, so both read 0 (white) .. 1000 (black).
 // Motors wait 1 s after boot, so a "pause" from the tuner (opening the port resets the Uno)
 // lands before the car moves.
@@ -25,12 +27,17 @@ const bool RIGHT_REVERSED = false;
 int BANG_SPEED = 200;          // bang-bang "on" duty, 0-255
 int BASE_SPEED = 160;          // PID cruising duty, 0-255
 float KP = 0.30, KI = 0.0, KD = 2.0;  // flip KP/KD sign if it steers away from the line
-float SLOW = 0.0;              // PID corner slowdown: cruise = base - slow * |err|  (0 = off)
+float SLOW = 0.0;              // PID corner slowdown: cruise = base - slow * 1000 * (|err|/1000)^expo  (0 = off)
+float EXPO = 1.0;              // slowdown curve: 1 = linear, >1 = gentle on small err, hard in corners
 int MIN_SPEED = 80;            // cruise never drops below this in a corner
 int TURN = 510;                // max steering |corr|; lower = gentler corners (510 = no cap)
 int AO_OFFSET = 0;             // added to right AO (after calibration) to centre the car
 int STOP_LEVEL = 700;          // both sensors above this (0-1000) = stop line; 1001 = never stop
 int TRIM = 0;                  // motor balance in %: >0 slows the left motor, <0 slows the right
+bool LAP = false;              // false = stop on the first stop line (competition); true = count laps on a loop
+int MARKS = 1;                 // checkpoint marks per lap
+int MARK_MS = 300;             // both black for less than this = a checkpoint mark
+const unsigned long OFFTRACK_MS = 1000;  // both black this long = off the track
 int calMin[2] = {0, 0}, calMax[2] = {1023, 1023};  // raw AO on white / black per sensor, set by "cal"
 bool paused = false;
 bool quiet = false;            // "q": silence status lines, e.g. before uploading over USB/IP
@@ -41,7 +48,7 @@ bool tui = false;              // "tui": the tuner is connected, so never mute (
 const unsigned long BOOT_DELAY_MS = 1000;
 
 // ---- EEPROM ----
-const byte MAGIC = 0x45;      // change this if you add/reorder saved values, so old data is ignored
+const byte MAGIC = 0x46;     // change this if you add/reorder saved values, so old data is ignored
 
 template <typename T> void io(int &addr, T &v, bool save) {
   if (save) EEPROM.put(addr, v); else EEPROM.get(addr, v);
@@ -54,6 +61,7 @@ void storeSettings(bool save) {
   io(a, BASE_SPEED, save); io(a, BANG_SPEED, save); io(a, AO_OFFSET, save); io(a, mode, save);
   io(a, SLOW, save); io(a, MIN_SPEED, save); io(a, TURN, save);
   io(a, STOP_LEVEL, save); io(a, TRIM, save); io(a, calMin, save); io(a, calMax, save);
+  io(a, EXPO, save); io(a, LAP, save); io(a, MARKS, save); io(a, MARK_MS, save);
   if (save) EEPROM.update(0, MAGIC);
 }
 
@@ -118,7 +126,22 @@ bool calibrate() {              // slide both sensors across the line by hand wh
 float integral, lastErr;
 int cruise;                    // PID speed after corner slowdown, before steering
 unsigned long lastT, lastPrint;
-bool stopped;
+bool stopped, offTrack;
+bool onBlack;                  // both sensors on black right now
+unsigned long blackStart;      // when they went black
+int cp;                        // checkpoints since "run"
+unsigned long lapStart, splitStart, lastLap, lastSplit;  // ms
+
+void checkpoint(unsigned long now) {
+  if (cp > 0) lastSplit = now - splitStart;
+  splitStart = now;
+  if (cp % MARKS == 0) {       // a lap boundary; the first mark after "run" starts lap 1
+    if (cp > 0) lastLap = now - lapStart;
+    lapStart = now;
+  }
+  cp++;
+  tone(BUZZER, 3000, 30);
+}
 
 void showSettings() {
   Serial.print(F("mode ")); Serial.print(mode == 'p' ? "PID" : "BANG");
@@ -129,12 +152,16 @@ void showSettings() {
   Serial.print(F(" kd ")); Serial.print(KD, 3);
   Serial.print(F(" base ")); Serial.print(BASE_SPEED);
   Serial.print(F(" slow ")); Serial.print(SLOW, 3);
+  Serial.print(F(" expo ")); Serial.print(EXPO, 2);
   Serial.print(F(" min ")); Serial.print(MIN_SPEED);
   Serial.print(F(" turn ")); Serial.print(TURN);
   Serial.print(F(" bang ")); Serial.print(BANG_SPEED);
   Serial.print(F(" off ")); Serial.print(AO_OFFSET);
   Serial.print(F(" stop ")); Serial.print(STOP_LEVEL);
-  Serial.print(F(" trim ")); Serial.println(TRIM);
+  Serial.print(F(" trim ")); Serial.print(TRIM);
+  Serial.print(F(" lap ")); Serial.print(LAP);
+  Serial.print(F(" marks ")); Serial.print(MARKS);
+  Serial.print(F(" mark ")); Serial.println(MARK_MS);
 }
 
 void handleCommand() {
@@ -151,7 +178,10 @@ void handleCommand() {
   if (key == "p" || key == "b") { mode = key[0]; save = true; }
   else if (key == "x") paused = !paused;
   else if (key == "pause") paused = true;
-  else if (key == "run") paused = false;
+  else if (key == "run") {     // also clears OFFTRACK and starts lap timing afresh
+    paused = offTrack = false;
+    cp = 0; lastLap = lastSplit = 0; blackStart = millis();  // a car placed on a mark isn't "off track"
+  }
   else if (key == "q") quiet = !quiet;
   else if (key == "tui") { tui = true; muted = false; }
   else if (key == "d") { EEPROM.update(0, 0xFF); Serial.println(F("saved settings wiped; code defaults from next reset")); return; }
@@ -169,6 +199,10 @@ void handleCommand() {
     Serial.println(F("off <n>       added to right AO, e.g. off -3"));
     Serial.println(F("stop <0-1001> stop line when both sensors read above this; 1001 = never"));
     Serial.println(F("trim <n>      motor balance %, >0 slows left, <0 slows right"));
+    Serial.println(F("expo <n>      slowdown curve, 1 = linear"));
+    Serial.println(F("lap 0|1       0 = stop on stop line, 1 = loop: time laps, stop only off track"));
+    Serial.println(F("marks <n>     checkpoint marks per lap"));
+    Serial.println(F("mark <ms>     both black shorter than this = a mark"));
     Serial.println(F("cal           5 s: slide both sensors across the line by hand"));
     Serial.println(F("d             wipe saved settings (code defaults after reset)"));
   }
@@ -183,6 +217,10 @@ void handleCommand() {
   else if (hasValue && key == "off") { AO_OFFSET = (int)v; save = true; }
   else if (hasValue && key == "stop") { STOP_LEVEL = constrain((int)v, 0, 1001); save = true; }
   else if (hasValue && key == "trim") { TRIM = constrain((int)v, -50, 50); save = true; }
+  else if (hasValue && key == "expo") { EXPO = constrain(v, 0.2f, 5.0f); save = true; }
+  else if (hasValue && key == "lap") { LAP = v != 0; save = true; }
+  else if (hasValue && key == "marks") { MARKS = constrain((int)v, 1, 20); save = true; }
+  else if (hasValue && key == "mark") { MARK_MS = constrain((int)v, 20, 999); save = true; }
   else if (key == "cal") { save = calibrate(); paused = true; }  // you're holding the car
   else { Serial.print(F("?? ")); Serial.println(cmd); return; }
 
@@ -203,13 +241,22 @@ void loop() {
   float err = la - ra;  // >0: line is under the left sensor -> steer left
   bool stopLine = la > STOP_LEVEL && ra > STOP_LEVEL;  // analog, not DO: the DO pots trip on glare
 
-  bool waiting = millis() < BOOT_DELAY_MS;
+  unsigned long now = millis();
+  bool waiting = now < BOOT_DELAY_MS;
+  if (stopLine != onBlack) {
+    onBlack = stopLine;
+    if (onBlack) blackStart = now;
+    else if (LAP && !paused && !waiting && !offTrack && now - blackStart < MARK_MS) checkpoint(now);
+  }
+  bool longBlack = onBlack && now - blackStart >= OFFTRACK_MS;
+
   if (paused || waiting) {
     drive(0, 0);
-  } else if (stopLine) {
+  } else if (offTrack || (LAP ? longBlack : stopLine)) {
     drive(0, 0);
-    if (!stopped) tone(BUZZER, 2000, 300);
+    if (!stopped) tone(BUZZER, LAP ? 600 : 2000, LAP ? 800 : 300);  // low long beep = off track
     stopped = true;
+    offTrack = LAP;            // latched until "run": someone has to put the car back
   } else {
     stopped = false;
     if (mode == 'b') {
@@ -220,7 +267,7 @@ void loop() {
       integral = constrain(integral + err, -2000, 2000);
       float corr = constrain(KP * err + KI * integral + KD * (err - lastErr), -TURN, TURN);
       lastErr = err;
-      cruise = constrain(BASE_SPEED - SLOW * fabs(err), min(MIN_SPEED, BASE_SPEED), BASE_SPEED);
+      cruise = constrain(BASE_SPEED - SLOW * 1000 * pow(fabs(err) / 1000, EXPO), min(MIN_SPEED, BASE_SPEED), BASE_SPEED);
       drive(cruise - corr, cruise + corr);
     }
   }
@@ -238,6 +285,12 @@ void loop() {
     Serial.print(F(" cruise:")); Serial.print(cruise);
     Serial.print(F(" L_spd:")); Serial.print(leftSpeed);
     Serial.print(F(" R_spd:")); Serial.print(rightSpeed);
-    Serial.println(paused ? " PAUSED" : waiting ? " WAIT" : stopped ? " STOP" : "");
+    if (LAP) {
+      Serial.print(F(" cp:")); Serial.print(cp);
+      Serial.print(F(" laps:")); Serial.print(cp > 0 ? (cp - 1) / MARKS : 0);
+      Serial.print(F(" lap:")); Serial.print(lastLap);
+      Serial.print(F(" split:")); Serial.print(lastSplit);
+    }
+    Serial.println(paused ? " PAUSED" : waiting ? " WAIT" : offTrack ? " OFFTRACK" : stopped ? " STOP" : "");
   }
 }
