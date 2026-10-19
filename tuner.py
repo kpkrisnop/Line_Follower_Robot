@@ -142,7 +142,8 @@ class Curve(Widget):
         v = self.app.query_one(Settings).values
         if not all(k in v for k in ("base", "slow", "expo", "min")):
             return Text("waiting for settings…", style="dim")
-        base, slow, expo = v["base"], v["slow"], v["expo"]
+        base, slow = v["base"], v["slow"]
+        expo = min(max(v["expo"], 0.2), 5.0)  # the firmware's clamp; a nudge shows here before its reply
         floor = min(v["min"], base)
         cols, rows = self.size.width - 5, self.size.height - 1  # 5 = y labels, 1 = x axis
         if cols < 2 or rows < 1 or base <= 0:
