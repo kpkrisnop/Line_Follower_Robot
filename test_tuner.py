@@ -15,6 +15,7 @@ import tuner
 
 REAL_LOOP = tuner.Tuner.serial_loop
 tuner.LOG = Path(tempfile.mkdtemp()) / "tuning-log.md"  # never touch the real log
+tuner.TELEM_DIR = Path(tempfile.mkdtemp())  # nor the real telemetry
 
 GARBAGE = [
     "mode PID PAUSED | k ki 0.000 kd 0.500 base 180 slow",  # seen live 2026-10-17
@@ -91,6 +92,9 @@ async def autotune():
         assert app.study is None and app.ser.sent[app.ser.sent.index("kp") + 1] == "0.900"
         log = tuner.LOG.read_text()
         assert "lap 25.00 s" in log and "score 23.00" in log and "OFFTRACK" in log
+        rows = next(tuner.TELEM_DIR.glob("*.csv")).read_text().splitlines()
+        assert rows[0].startswith("time,mode,state,trial,kp") and len(rows) == 6, rows  # header + 5 status lines
+        assert rows[-1].split(",")[2] == "OFFTRACK"
     print("ok: autotune", flush=True)
 
 

@@ -11,6 +11,7 @@ In lap mode ("lap 1") every finished lap is logged there too.
 Autotune ("a"): Optuna tries kp/kd/ki on the loop; each trial skips the lap in progress
 when the values change and scores the next full lap.
 """
+import csv
 import re
 import threading
 import time
@@ -31,6 +32,8 @@ CH340_VID = 0x1A86
 WIFI = "socket://192.168.77.1:23"  # wifi_bridge on the ESP8266; join Wi-Fi "LineFollower" first
 LOG = Path(__file__).with_name("tuning-log.md")
 LOG_HEADER = "# Tuning log\n\n| Time | Mode | Settings | Note |\n|---|---|---|---|\n"
+TELEM_DIR = Path(__file__).with_name("telemetry")  # one CSV per tuner run, every 10 Hz status line
+TELEM_FIELDS = ["L_DO", "R_DO", "L_AO", "R_AO", "err", "cruise", "L_spd", "R_spd", "cp", "laps", "lap", "split"]
 
 # name, step, decimals
 PARAMS = [("kp", 0.05, 3), ("kd", 0.05, 3), ("ki", 0.001, 3), ("base", 10, 0),
@@ -204,6 +207,7 @@ class Tuner(App):
         self.entry_kind = None
         self.laps, self.lap_errs, self.best_lap = 0, [], None
         self.study = self.trial = None   # autotune is on while study is set
+        self.telem = None                # csv writer, opened on the first status line
         self.trial_laps = 0              # laps finished since this trial's values were sent
         self.query_one("#settings").border_title = "Settings"
         self.query_one("#live").border_title = "Live (err graph, last 10 s)"
@@ -304,12 +308,25 @@ class Tuner(App):
                 laps_line = (f"\nlap {int(f['laps']) + 1}  last {int(f['lap']) / 1000:.2f}  best {best}"
                              f"  split {int(f['split']) / 1000:.2f}  cp {f['cp']}")
             self.state = state
+            self.log_telemetry(f, state)
             self.query_one("#livetext").update(
                 f"[b]{self.mode}  {state}[/b]\n"
                 f"L_AO {f.get('L_AO')}  R_AO {f.get('R_AO')}   DO {f.get('L_DO')}/{f.get('R_DO')}   err {f.get('err')}\n"
                 f"cruise {f.get('cruise')}   L_spd {f.get('L_spd')}  R_spd {f.get('R_spd')}{laps_line}")
         else:
             self.set_msg(line)
+
+    def log_telemetry(self, f, state):
+        if not self.telem:
+            TELEM_DIR.mkdir(exist_ok=True)
+            path = TELEM_DIR / f"{datetime.now():%y%m%d-%H%M%S}.csv"
+            self.telem_file = path.open("w", newline="", buffering=1)  # line-buffered: survives a crash
+            self.telem = csv.writer(self.telem_file)
+            self.telem.writerow(["time", "mode", "state", "trial", "kp", "kd", "ki"] + TELEM_FIELDS)
+        vals = self.query_one(Settings).values
+        trial = self.trial.number + 1 if self.study else ""
+        self.telem.writerow([f"{time.time():.2f}", self.mode, state, trial]
+                            + [vals.get(k, "") for k in ("kp", "kd", "ki")] + [f.get(k, "") for k in TELEM_FIELDS])
 
     def track_laps(self, f, err, state):
         laps = int(f["laps"])
