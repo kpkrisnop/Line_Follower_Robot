@@ -135,8 +135,12 @@ class Settings(Widget, can_focus=True):
         self.refresh()
 
 
+BRAILLE = [[0x01, 0x08], [0x02, 0x10], [0x04, 0x20], [0x40, 0x80]]  # dot bit for [row][col] in a cell
+
+
 class Curve(Widget):
-    """Corner slowdown: cruise vs |err|, as the firmware computes it; live |err| highlighted."""
+    """Corner slowdown: cruise vs err (−1000..1000), as the firmware computes it, drawn RC-transmitter
+    style in braille dots (2×4 per cell) with dashed centre lines; the live err is the red dot."""
 
     def render(self):
         v = self.app.query_one(Settings).values
@@ -148,19 +152,43 @@ class Curve(Widget):
         cols, rows = self.size.width - 5, self.size.height - 1  # 5 = y labels, 1 = x axis
         if cols < 2 or rows < 1 or base <= 0:
             return Text()
-        heights = [max(floor, min(base, base - slow * 1000 * (x / (cols - 1)) ** expo)) / base * rows * 8
-                   for x in range(cols)]
+        w, h = cols * 2, rows * 4  # dots
+
+        def y_of(px):  # dot row of the curve at dot column px (0 = top = base)
+            e = abs(px / (w - 1) * 2000 - 1000)
+            cruise = max(floor, min(base, base - slow * 1000 * (e / 1000) ** expo))
+            return round((1 - cruise / base) * (h - 1))
+
+        curve = [[0] * cols for _ in range(rows)]
+        cross = [[0] * cols for _ in range(rows)]
+        for p in range(0, w, 4):  # dashes: 2 dots on, 2 off
+            for q in (p, p + 1):
+                if q < w:
+                    cross[h // 2 // 4][q // 2] |= BRAILLE[h // 2 % 4][q % 2]
+        for p in range(0, h, 4):
+            for q in (p, p + 1):
+                if q < h:
+                    cross[q // 4][w // 2 // 2] |= BRAILLE[q % 4][w // 2 % 2]
+        prev = None
+        for px in range(w):
+            y = y_of(px)
+            for yy in range(min(y, prev), max(y, prev) + 1) if prev is not None else (y,):  # join steps
+                curve[yy // 4][px // 2] |= BRAILLE[yy % 4][px % 2]
+            prev = y
         errs = self.app.errs
-        hl = round(min(abs(errs[-1]), 1000) / 1000 * (cols - 1)) if errs else -1
+        live = None
+        if errs:
+            px = round((max(-1000, min(1000, errs[-1])) + 1000) / 2000 * (w - 1))
+            live = (y_of(px) // 4, px // 2)
         t = Text()
         for r in range(rows):
-            t.append(f"{base:>4.0f}│" if r == 0 else "   0│" if r == rows - 1 else "    │", style="dim")
-            for x, h in enumerate(heights):
-                fill = h - (rows - 1 - r) * 8  # eighths of this cell that are filled
-                ch = " " if fill <= 0 else "█" if fill >= 8 else " ▁▂▃▄▅▆▇"[int(fill)]
-                t.append(ch, style="bold red" if x == hl else "dodger_blue2")
+            t.append(f"{base:>4.0f} " if r == 0 else "   0 " if r == rows - 1 else "     ", style="dim")
+            for c in range(cols):
+                bits = curve[r][c] | cross[r][c]
+                style = "bold red" if (r, c) == live else "dodger_blue2" if curve[r][c] else "grey42"
+                t.append(chr(0x2800 + bits) if bits else " ", style=style)
             t.append("\n")
-        t.append("     0" + "|err|".center(cols - 5) + "1000", style="dim")
+        t.append("     -1000" + "0".center(cols - 9) + "1000", style="dim")
         return t
 
 
