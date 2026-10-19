@@ -13,6 +13,7 @@ For the step-by-step procedure, open **Tuning guide** from the command palette (
 | `c` | calibrate sensors (5 s, slide the car across the line) |
 | `n` | write a note to `tuning-log.md` |
 | `a` | start / stop autotune |
+| `f` | the last lap was fake (corner blip): drop it, re-run its trial |
 | Esc | cancel typing, close this page |
 | `ctrl+p` | command palette (guide, docs, theme…) |
 | `ctrl+q` | quit |
@@ -42,10 +43,12 @@ For the step-by-step procedure, open **Tuning guide** from the command palette (
 
 ## Autotune
 - Searches `kp` 0.15–0.8, `kd` 0–1, `ki` 0–0.1 with Optuna, 30 trials. Trial 1 = the current values.
-- Score = lap seconds + 0.01 × RMS err over the scored lap. Off track = 60. Lower is better.
+- Score = lap seconds + `smooth` × shake over the scored lap. Off track = 60. Lower is better.
+- shake = mean |change in err| between status lines (10 Hz). Smooth laps have low shake; every lap row shows it, so you can pick `smooth`.
+- `f` = the last lap was fake: it leaves best lap, and if it was scored its trial is dropped and run again.
 - Values change mid-lap: the rest of that lap is warm-up, the next full lap is scored.
 - Stopping (`a`) or finishing applies the best trial's values.
-- Ranges, trial count and weights are constants at the top of `tuner.py` (`AUTO`, `AUTO_TRIALS`, `RMS_WEIGHT`, `OFFTRACK_SCORE`).
+- Ranges, trial count and weights are constants at the top of `tuner.py` (`AUTO`, `AUTO_TRIALS`, `OFFTRACK_SCORE`). `smooth` is in Settings, saved in `tuner-settings.json`.
 - The search lives in memory; a restart begins a new search. Every result is in `tuning-log.md`.
 
 ## Files

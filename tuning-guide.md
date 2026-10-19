@@ -52,7 +52,9 @@ Watch the **Slowdown curve** box while you change these.
 ## 8. Autotune (`a`)
 1. Car running on the loop, `marks` set, Wi-Fi connected.
 2. Press `a`. It tries 30 sets of `kp`/`kd`/`ki` (about 20 min). Trial 1 is your current values.
-3. Each trial: the rest of the current lap is warm-up, the next full lap is scored (lap s + 0.01 × RMS err; off track = 60).
+3. Each trial: the rest of the current lap is warm-up, the next full lap is scored (lap s + `smooth` × shake; off track = 60).
+   Pick `smooth` first: compare the shake of a smooth lap and a shaky one in Notes, and raise it until the shaky one scores worse.
+   A lap flagged ⚠ short, or one you saw was fake: press `f` straight away (before the next lap).
 4. If it goes off the track, put it back and press space.
 5. `a` again stops early. Stopping or finishing **applies the best values**.
 

@@ -16,6 +16,7 @@ import tuner
 REAL_LOOP = tuner.Tuner.serial_loop
 tuner.LOG = Path(tempfile.mkdtemp()) / "tuning-log.md"  # never touch the real log
 tuner.TELEM_DIR = Path(tempfile.mkdtemp())  # nor the real telemetry
+tuner.LOCAL_FILE = Path(tempfile.mkdtemp()) / "tuner-settings.json"  # nor the real smooth setting
 
 GARBAGE = [
     "mode PID PAUSED | k ki 0.000 kd 0.500 base 180 slow",  # seen live 2026-10-17
@@ -88,25 +89,51 @@ async def autotune():
         app.action_autotune()
         assert app.ser.sent[app.ser.sent.index("kp") + 1] == "0.500"  # first trial = current values
         app.handle_line(lap_status(1, 0, 0))
-        app.handle_line(lap_status(2, 1, 25000))   # warm-up lap: not scored
+        app.handle_line(lap_status(2, 1, 25000, err=-100))   # warm-up lap: not scored
         assert len(app.study.trials) == 1 and app.trial_laps == 1
-        app.handle_line(lap_status(3, 2, 20000, err=300))  # scored: 20 + 0.01 * 300
-        assert app.study.trials[0].value == 23.0, app.study.trials[0].value
+        app.handle_line(lap_status(2, 1, 25000, err=-100))  # mid-lap
+        app.handle_line(lap_status(3, 2, 20000, err=300))  # scored: 20 s + 0.03 smooth * 400 shake
+        assert app.study.trials[0].value == 32.0, app.study.trials[0].value
         app.handle_line(lap_status(3, 2, 20000, state="OFFTRACK"))
         assert app.study.trials[1].value == tuner.OFFTRACK_SCORE
         app.ser.sent.clear()
         app.action_autotune()  # stop
         assert app.study is None and app.ser.sent[app.ser.sent.index("kp") + 1] == "0.500"
         log = tuner.LOG.read_text()
-        assert "lap 25.00 s" in log and "score 23.00" in log and "OFFTRACK" in log
+        assert "lap 25.00 s" in log and "score 32.00" in log and "shake 400" in log and "OFFTRACK" in log
         rows = next(tuner.TELEM_DIR.glob("*.csv")).read_text().splitlines()
-        assert rows[0].startswith("time,mode,state,trial,kp") and len(rows) == 6, rows  # header + 5 status lines
+        assert rows[0].startswith("time,mode,state,trial,kp") and len(rows) == 7, rows  # header + 6 status lines
         assert rows[-1].split(",")[2] == "OFFTRACK"
     print("ok: autotune", flush=True)
+
+
+async def fake_lap():
+    """f drops the last scored trial, keeps the one running, and queues the faked one again."""
+    tuner.Tuner.serial_loop = lambda self: None
+    app = tuner.Tuner()
+    async with app.run_test():
+        app.ser = FakeSer()
+        app.handle_line("mode PID RUNNING | kp 0.500 ki 0.000 kd 0.500 base 80 lap 1 marks 1 mark 300")
+        app.handle_line(lap_status(0, 0, 0))
+        app.action_autotune()
+        app.handle_line(lap_status(1, 0, 0))
+        app.handle_line(lap_status(2, 1, 13000))
+        app.handle_line(lap_status(3, 2, 2000))  # a fake 2 s lap gets the trial a great score
+        running = dict(app.trial.params)
+        app.action_fake_lap()
+        done = [t for t in app.study.trials if t.state == tuner.optuna.trial.TrialState.COMPLETE]
+        assert not done and app.trial.params == running and app.best_lap == 13.0
+        app.handle_line(lap_status(4, 3, 13000))  # the running trial's warm-up
+        app.handle_line(lap_status(5, 4, 14000))  # scored
+        assert app.study.trials[0].value == 14.0
+        assert app.trial.params["kp"] == 0.5  # then the faked trial runs again
+        assert "marked fake" in tuner.LOG.read_text()
+    print("ok: fake lap", flush=True)
 
 
 STATUS = b"PID L_DO:0 R_DO:0 L_AO:23 R_AO:22 err:1.00 cruise:0 L_spd:0 R_spd:0 PAUSED\n"
 asyncio.run(main())
 asyncio.run(autotune())
+asyncio.run(fake_lap())
 asyncio.run(silent_wifi())
 os._exit(0)  # serial thread is a daemon blocked on the silent socket

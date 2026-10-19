@@ -12,7 +12,9 @@ Autotune ("a"): Optuna tries kp/kd/ki on the loop; each trial skips the lap in p
 when the values change and scores the next full lap.
 """
 import csv
+import json
 import re
+import statistics
 import threading
 import time
 from datetime import datetime
@@ -43,7 +45,9 @@ TELEM_FIELDS = ["L_DO", "R_DO", "L_AO", "R_AO", "err", "cruise", "L_spd", "R_spd
 PARAMS = [("kp", 0.05, 3), ("kd", 0.05, 3), ("ki", 0.001, 3), ("base", 10, 0),
           ("slow", 0.01, 3), ("expo", 0.1, 2), ("min", 10, 0), ("turn", 10, 0), ("bang", 10, 0),
           ("off", 1, 0), ("stop", 10, 0), ("trim", 1, 0), ("lap", 1, 0), ("marks", 1, 0),
-          ("mark", 10, 0), ("minlap", 1, 0)]
+          ("mark", 10, 0), ("minlap", 1, 0), ("smooth", 0.005, 3)]
+LOCAL = {"smooth": 0.03}  # tuner-only settings (not on the robot), with defaults
+LOCAL_FILE = Path(__file__).with_name("tuner-settings.json")
 HELP = {
     "kp": "Proportional gain: steering = kp × err. Higher turns harder towards the line; too high zigzags on straights.",
     "kd": "Derivative gain, on the change in err per 10 ms step. Damps wobble. Too high relative to kp makes it twitchy.",
@@ -64,6 +68,7 @@ HELP = {
            "stop only when off track (black ≥ 1 s).",
     "marks": "Tape marks per lap. The first mark after run starts lap 1.",
     "mark": "Both black for less than this many ms = a checkpoint mark. 1 s or more = off track.",
+    "smooth": "Tuner only, not on the robot. Autotune score = lap s + smooth × shake, where shake = mean |change in err| between status lines (10 Hz) over the lap. 0 = only lap time counts; raise it until shaky laps score worse than smooth ones. Every lap row shows its shake.",
     "minlap": "Shortest real lap, s. A mark sooner than minlap/marks s after the last counted one is ignored (corner blips). 0 = off.",
 }
 
@@ -71,7 +76,6 @@ HELP = {
 # kp 1.9 / kd 1.7 tried on 2026-10-19 were far too aggressive; hand-tuned kp was ~0.3
 AUTO = {"kp": (0.15, 0.8, 0.01), "kd": (0.0, 1.0, 0.01), "ki": (0.0, 0.1, 0.001)}  # low, high, step
 AUTO_TRIALS = 30
-RMS_WEIGHT = 0.01       # score = lap seconds + RMS_WEIGHT * RMS err over that lap
 OFFTRACK_SCORE = 60.0   # score for a trial that leaves the track
 optuna.logging.set_verbosity(optuna.logging.WARNING)  # its log lines would scribble over the TUI
 
@@ -211,7 +215,7 @@ class Tuner(App):
     Screen { layout: vertical; layers: base doc; }
     #doc { layer: doc; display: none; width: 100%; height: 100%; border: round $accent;
            border-title-align: left; background: $surface; }
-    #top { height: 18; }
+    #top { height: 19; }
     Settings { width: 30; border: round $accent; border-title-align: left; padding: 0 1; }
     #live { height: 12; border: round $accent; padding: 0 1; }
     #live.lost { border: round $error; }
@@ -224,7 +228,7 @@ class Tuner(App):
     #entry { display: none; }
     """
     BINDINGS = [("space", "toggle_run", "run/pause"), ("m", "mode", "PID/bang"),
-                ("c", "cal", "calibrate sensors"), ("n", "note", "note"), ("a", "autotune", "autotune"),
+                ("c", "cal", "calibrate sensors"), ("n", "note", "note"), ("a", "autotune", "autotune"), ("f", "fake_lap", "fake lap"),
                 ("escape", "cancel", "cancel"), ("ctrl+q", "quit", "quit")]
 
     def compose(self) -> ComposeResult:
@@ -252,6 +256,13 @@ class Tuner(App):
         self.errs = []
         self.entry_kind = None
         self.laps, self.lap_errs, self.best_lap = 0, [], None
+        self.lap_times = []              # real laps this run (fake ones removed with f)
+        self.last_lap = None             # (lap s, scored FrozenTrial or None) for f
+        try:
+            saved = json.loads(LOCAL_FILE.read_text())
+        except (OSError, ValueError):
+            saved = {}
+        self.query_one(Settings).values.update({k: saved.get(k, v) for k, v in LOCAL.items()})
         self.study = self.trial = None   # autotune is on while study is set
         self.telem = None                # csv writer, opened on the first status line
         self.trial_laps = 0              # laps finished since this trial's values were sent
@@ -387,23 +398,29 @@ class Tuner(App):
         if laps > self.laps:
             lap_s = int(f["lap"]) / 1000
             rms = (sum(e * e for e in self.lap_errs) / max(len(self.lap_errs), 1)) ** 0.5
+            shake = statistics.fmean(abs(b - a) for a, b in zip(self.lap_errs, self.lap_errs[1:])) if len(self.lap_errs) > 1 else 0
             self.lap_errs = []
-            self.best_lap = min(self.best_lap or lap_s, lap_s)
-            self.on_lap(lap_s, rms)
+            self.lap_times.append(lap_s)
+            self.best_lap = min(self.lap_times)
+            self.on_lap(lap_s, rms, shake)
         self.laps = laps
         if state == "OFFTRACK" and self.state != "OFFTRACK":
             self.on_offtrack()
 
-    def on_lap(self, lap_s, rms):
-        note = f"lap {lap_s:.2f} s, rms err {rms:.0f}"
+    def on_lap(self, lap_s, rms, shake):
+        note = f"lap {lap_s:.2f} s, shake {shake:.0f}, rms err {rms:.0f}"
+        if len(self.lap_times) >= 4 and lap_s < 0.6 * statistics.median(self.lap_times):
+            note += " ⚠ short: fake? (f)"  # ponytail: median of this run's laps; minlap is the real filter
+        self.last_lap = (lap_s, None)
         if self.study:
             self.trial_laps += 1
             self.show_auto()
             if self.trial_laps >= 2:  # lap 1 was in progress when the values changed
-                score = lap_s + RMS_WEIGHT * rms
+                score = lap_s + self.query_one(Settings).values["smooth"] * shake
                 note = f"trial {self.trial.number + 1}: {note} → score {score:.2f}"
                 self.save_note(note)
                 self.study.tell(self.trial, score)
+                self.last_lap = (lap_s, self.study.trials[self.trial.number])
                 self.next_trial()
                 return
         self.save_note(note)
@@ -415,6 +432,30 @@ class Tuner(App):
         self.study.tell(self.trial, OFFTRACK_SCORE)
         self.next_trial()
         self.set_msg("[b]off track[/b] — put the car on the line, press space")
+
+    def action_fake_lap(self):
+        if not self.last_lap:
+            self.set_msg("no lap to mark fake")
+            return
+        lap_s, scored = self.last_lap
+        self.last_lap = None
+        self.lap_times.remove(lap_s)
+        self.best_lap = min(self.lap_times, default=None)
+        note = f"lap {lap_s:.2f} s marked fake"
+        if scored and self.study:
+            # Optuna can't forget a told trial: rebuild the study without it
+            study = optuna.create_study(direction="minimize")
+            study.add_trials([t for t in self.study.trials
+                              if t.state == optuna.trial.TrialState.COMPLETE and t.number != scored.number])
+            study.enqueue_trial(self.trial.params)  # the trial on the car now carries on
+            study.enqueue_trial(scored.params)      # then the faked one gets another go
+            self.study = study
+            self.trial = study.ask()
+            for k, (lo, hi, step) in AUTO.items():
+                self.trial.suggest_float(k, lo, hi, step=step)  # same values: nothing to send
+            note += f", its trial discarded and queued again"
+        self.save_note(note)
+        self.show_auto()
 
     # ---- autotune ----
     def action_autotune(self):
@@ -459,7 +500,8 @@ class Tuner(App):
 
     def show_auto(self):
         ranges = "  ".join(f"{k} {lo:g}–{hi:g}" for k, (lo, hi, _) in AUTO.items())
-        text = f"[dim]score = lap s + {RMS_WEIGHT:g}×rms err · off track {OFFTRACK_SCORE:g}\n{ranges}[/dim]\n"
+        smooth = self.query_one(Settings).values["smooth"]
+        text = f"[dim]score = lap s + {smooth:g}×shake · off track {OFFTRACK_SCORE:g} · f = last lap was fake\n{ranges}[/dim]\n"
         if not self.study:
             self.query_one("#auto").update(text + f"off — [b]a[/b] starts {AUTO_TRIALS} trials (car running on the loop)")
             return
@@ -501,9 +543,15 @@ class Tuner(App):
 
     def set_param(self, name, value):
         settings = self.query_one(Settings)
+        if name in LOCAL:
+            value = max(value, 0)
         settings.values[name] = value
         settings.changed()
-        self.send(f"{name} {fmt(name, value)}")
+        if name in LOCAL:
+            LOCAL_FILE.write_text(json.dumps({k: settings.values[k] for k in LOCAL}))
+            self.show_auto()
+        else:
+            self.send(f"{name} {fmt(name, value)}")
 
     def action_toggle_run(self):
         self.send("run" if self.paused or self.state in ("OFFTRACK", "STOP") else "pause")
@@ -551,7 +599,7 @@ class Tuner(App):
     def check_action(self, action, parameters):
         # while a page is open, keys like space or a must not drive the car
         doc = self.query("#doc")  # empty before compose and while the palette is open
-        if doc and doc.first().display and action in ("toggle_run", "mode", "cal", "note", "autotune"):
+        if doc and doc.first().display and action in ("toggle_run", "mode", "cal", "note", "autotune", "fake_lap"):
             return False
         return True
 
