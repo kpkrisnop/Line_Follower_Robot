@@ -38,7 +38,7 @@ If PID steers *away* from the line, negate `kp` and `kd`.
 
 ## 6. Corners: `slow`, `expo`, `min`
 Watch the **Slowdown curve** box while you change these.
-- `min` must be **below** `base`, or there is no slowdown at all.
+- `min` must be **below** `base`; at or above it there is no slowdown at all, whatever `slow` and `expo` say.
 - At `slow` 1.3 or more (with `expo 1`), almost every curve runs at `min`.
 - `expo` above 1 keeps speed on gentle wobbles and brakes only in real corners.
 - `turn` (steering cap) exists, but in testing it didn't help much. Leave it at 510 unless corners saturate.

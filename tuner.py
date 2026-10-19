@@ -49,7 +49,7 @@ HELP = {
     "slow": "Corner slowdown strength: cruise = base − slow·1000·(|err|/1000)^expo. 0 = off. Curve on the right →",
     "expo": "Shape of the slowdown curve. 1 = linear; >1 barely slows for small err and brakes hard in corners; "
             "<1 slows early.",
-    "min": "Lowest cruise in corners: the floor of the curve. Above base = no slowdown at all.",
+    "min": "Lowest cruise in corners: the floor of the curve. At or above base = no slowdown at all (slow and expo do nothing).",
     "turn": "Max |steering| (0–510). 510 = no cap. Lower stops both wheels saturating in corners.",
     "bang": "Wheel speed in bang-bang mode (m switches mode).",
     "off": "Added to the right sensor reading. Set it on white so err ≈ 0 with the car centred.",
