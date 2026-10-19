@@ -18,7 +18,7 @@ For the step-by-step procedure, open **Tuning guide** from the command palette (
 | `ctrl+q` | quit |
 
 ## Screen
-- **Live**: mode and state, sensor readings, err, cruise, wheel speeds; in lap mode the lap, last and best lap, last split and checkpoint count. The graph is the last 10 s of err. Red border = link lost.
+- **Live**: mode and state, sensor readings, err, cruise, wheel speeds; in lap mode the lap, last and best lap, last split and checkpoint count. The graph is the last 10 s of err. Red border = link lost. Bottom right, over Wi-Fi: the Mac's signal to the car (green above -70 dBm, yellow to -80, red below).
 - **Settings**: every firmware setting. Changes are saved to the robot's EEPROM straight away.
 - **Autotune**: score formula, search ranges, current trial and the best so far.
 - **About**: what the selected setting does.
@@ -41,7 +41,7 @@ For the step-by-step procedure, open **Tuning guide** from the command palette (
 - `lap 0` (competition): the first black crossing stops the car.
 
 ## Autotune
-- Searches `kp` 0.3–2, `kd` 0–2, `ki` 0–0.1 with Optuna, 30 trials. Trial 1 = the current values.
+- Searches `kp` 0.15–0.8, `kd` 0–1, `ki` 0–0.1 with Optuna, 30 trials. Trial 1 = the current values.
 - Score = lap seconds + 0.01 × RMS err over the scored lap. Off track = 60. Lower is better.
 - Values change mid-lap: the rest of that lap is warm-up, the next full lap is scored.
 - Stopping (`a`) or finishing applies the best trial's values.

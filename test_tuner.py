@@ -83,10 +83,10 @@ async def autotune():
     app = tuner.Tuner()
     async with app.run_test():
         app.ser = FakeSer()
-        app.handle_line("mode PID RUNNING | kp 0.900 ki 0.000 kd 0.500 base 80 lap 1 marks 1 mark 300")
+        app.handle_line("mode PID RUNNING | kp 0.500 ki 0.000 kd 0.500 base 80 lap 1 marks 1 mark 300")
         app.handle_line(lap_status(0, 0, 0))
         app.action_autotune()
-        assert app.ser.sent[app.ser.sent.index("kp") + 1] == "0.900"  # first trial = current values
+        assert app.ser.sent[app.ser.sent.index("kp") + 1] == "0.500"  # first trial = current values
         app.handle_line(lap_status(1, 0, 0))
         app.handle_line(lap_status(2, 1, 25000))   # warm-up lap: not scored
         assert len(app.study.trials) == 1 and app.trial_laps == 1
@@ -96,7 +96,7 @@ async def autotune():
         assert app.study.trials[1].value == tuner.OFFTRACK_SCORE
         app.ser.sent.clear()
         app.action_autotune()  # stop
-        assert app.study is None and app.ser.sent[app.ser.sent.index("kp") + 1] == "0.900"
+        assert app.study is None and app.ser.sent[app.ser.sent.index("kp") + 1] == "0.500"
         log = tuner.LOG.read_text()
         assert "lap 25.00 s" in log and "score 23.00" in log and "OFFTRACK" in log
         rows = next(tuner.TELEM_DIR.glob("*.csv")).read_text().splitlines()

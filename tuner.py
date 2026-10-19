@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["textual>=1.0", "pyserial>=3.5", "optuna>=4"]
+# dependencies = ["textual>=1.0", "pyserial>=3.5", "optuna>=4", "pyobjc-framework-CoreWLAN; sys_platform == 'darwin'"]
 # ///
 """Line follower tuner. Run: uv run tuner.py   (or just: robot)
 
@@ -19,6 +19,10 @@ from datetime import datetime
 from pathlib import Path
 
 import optuna
+try:
+    import CoreWLAN  # macOS Wi-Fi API: signal of the Mac's link to the car's access point
+except ImportError:
+    CoreWLAN = None
 import serial
 from serial.tools import list_ports
 from rich.text import Text
@@ -64,7 +68,8 @@ HELP = {
 }
 
 # Autotune. ponytail: edit here, not in the app; add in-app editing if these change often
-AUTO = {"kp": (0.3, 2.0, 0.01), "kd": (0.0, 2.0, 0.01), "ki": (0.0, 0.1, 0.001)}  # low, high, step
+# kp 1.9 / kd 1.7 tried on 2026-10-19 were far too aggressive; hand-tuned kp was ~0.3
+AUTO = {"kp": (0.15, 0.8, 0.01), "kd": (0.0, 1.0, 0.01), "ki": (0.0, 0.1, 0.001)}  # low, high, step
 AUTO_TRIALS = 30
 RMS_WEIGHT = 0.01       # score = lap seconds + RMS_WEIGHT * RMS err over that lap
 OFFTRACK_SCORE = 60.0   # score for a trial that leaves the track
@@ -472,7 +477,14 @@ class Tuner(App):
         box.border_title = f"About {name}"
         box.update(f"{HELP[name]}\n\n[dim]now {fmt(name, val) if val is not None else '—'} · step ±{step:g}[/dim]")
 
+    def show_rssi(self):
+        iface = CoreWLAN and CoreWLAN.CWWiFiClient.sharedWiFiClient().interface()
+        dbm = iface.rssiValue() if iface and getattr(self.ser, "port", None) == WIFI else 0  # 0 = not associated
+        color = "red" if dbm < -80 else "yellow" if dbm < -70 else "green"
+        self.query_one("#live").border_subtitle = f"Wi-Fi [{color}]{dbm} dBm[/]" if dbm else ""
+
     def check_stale(self):
+        self.show_rssi()
         # UI-side watchdog: catches a stuck or dead serial thread too, on USB as well as Wi-Fi
         quiet = time.time() - self.last_status
         if self.ser and quiet > 2 and not self.query_one("#live").has_class("lost"):
