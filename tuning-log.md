@@ -21,3 +21,80 @@
 | 2026-10-15 15:43 | PID | kp 1.200 kd 0.500 ki 0.000 base 200 slow 2.000 min 60 bang 80 off 9 | works but offtrack |
 | 2026-10-15 15:56 | PID | kp 1.400 kd 0.600 ki 0.000 base 240 slow 3.000 min 60 bang 80 off 10 | slow must be below 2 |
 | 2026-10-15 16:09 | PID | kp 0.900 kd 0.500 ki 0.000 base 180 slow 3.000 min 120 bang 80 off -1 | 21 sec |
+| 2026-10-19 18:35 | BANG | kp 0.350 kd 0.000 ki 0.000 base 100 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 500 trim 0 lap 0 marks 1 mark 300 | autotune stopped: no finished trials |
+| 2026-10-19 18:38 | PID | kp 0.350 kd 0.000 ki 0.000 base 100 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 173 trim 0 lap 1 marks 1 mark 300 | autotune stopped: no finished trials |
+| 2026-10-19 18:39 | PID | kp 0.300 kd 0.000 ki 0.000 base 100 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 173 trim 0 lap 1 marks 1 mark 300 | autotune stopped: no finished trials |
+| 2026-10-19 18:49 | PID | kp 0.300 kd 0.000 ki 0.000 base 150 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.68 s, rms err 13 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 4.43 s, rms err 493 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 1.95 s, rms err 393 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.13 s, rms err 992 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.13 s, rms err 970 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.12 s, rms err 530 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.12 s, rms err 913 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.14 s, rms err 992 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.14 s, rms err 665 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.13 s, rms err 988 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.14 s, rms err 967 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.12 s, rms err 925 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.13 s, rms err 725 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.16 s, rms err 992 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.15 s, rms err 767 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.13 s, rms err 994 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.14 s, rms err 784 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.13 s, rms err 892 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.14 s, rms err 965 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.13 s, rms err 571 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.14 s, rms err 946 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.14 s, rms err 893 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.11 s, rms err 616 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.03 s, rms err 860 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.13 s, rms err 516 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.12 s, rms err 991 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.13 s, rms err 967 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.14 s, rms err 230 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.01 s, rms err 991 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.15 s, rms err 973 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.16 s, rms err 795 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.14 s, rms err 978 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.16 s, rms err 502 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.05 s, rms err 772 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.14 s, rms err 690 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.10 s, rms err 990 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.15 s, rms err 883 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.11 s, rms err 771 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.15 s, rms err 898 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.11 s, rms err 977 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.14 s, rms err 832 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.15 s, rms err 855 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.15 s, rms err 765 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.15 s, rms err 972 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.15 s, rms err 643 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.15 s, rms err 916 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.16 s, rms err 411 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.11 s, rms err 988 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.14 s, rms err 970 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.15 s, rms err 379 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.03 s, rms err 784 |
+| 2026-10-19 18:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 353 trim 0 lap 1 marks 1 mark 300 | lap 0.04 s, rms err 924 |
+| 2026-10-19 18:53 | PID | kp 0.300 kd 0.000 ki 0.000 base 130 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | lap 0.01 s, rms err 836 |
+| 2026-10-19 18:53 | PID | kp 0.300 kd 0.000 ki 0.000 base 130 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | trial 1: lap 0.01 s, rms err 751 → score 7.52 |
+| 2026-10-19 18:53 | PID | kp 1.260 kd 1.220 ki 0.009 base 130 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | lap 0.27 s, rms err 470 |
+| 2026-10-19 18:53 | PID | kp 1.260 kd 1.220 ki 0.009 base 130 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | trial 2: lap 0.23 s, rms err 917 → score 9.40 |
+| 2026-10-19 18:53 | PID | kp 2.000 kd 1.200 ki 0.033 base 130 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | lap 0.57 s, rms err 592 |
+| 2026-10-19 18:53 | PID | kp 2.000 kd 1.200 ki 0.033 base 130 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | trial 3: lap 0.62 s, rms err 546 → score 6.08 |
+| 2026-10-19 18:53 | PID | kp 0.340 kd 0.860 ki 0.056 base 130 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | lap 0.53 s, rms err 502 |
+| 2026-10-19 18:53 | PID | kp 0.340 kd 0.860 ki 0.056 base 130 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | trial 4: lap 1.51 s, rms err 395 → score 5.47 |
+| 2026-10-19 18:53 | PID | kp 1.540 kd 0.860 ki 0.054 base 130 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | lap 0.56 s, rms err 496 |
+| 2026-10-19 18:53 | PID | kp 1.540 kd 0.860 ki 0.054 base 130 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | trial 5: lap 0.81 s, rms err 628 → score 7.09 |
+| 2026-10-19 18:53 | PID | kp 1.040 kd 0.470 ki 0.057 base 130 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | lap 0.28 s, rms err 276 |
+| 2026-10-19 18:53 | PID | kp 1.040 kd 0.470 ki 0.057 base 130 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | trial 6: lap 0.28 s, rms err 413 → score 4.41 |
+| 2026-10-19 18:53 | PID | kp 1.040 kd 0.220 ki 0.070 base 130 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | lap 1.23 s, rms err 604 |
+| 2026-10-19 18:54 | PID | kp 1.040 kd 0.220 ki 0.070 base 130 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | trial 7: OFFTRACK → score 60 |
+| 2026-10-19 18:55 | PID | kp 0.480 kd 0.220 ki 0.070 base 130 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | lap 0.10 s, rms err 79 |
+| 2026-10-19 18:57 | PID | (not connected) | lap 0.34 s, rms err 4 |
+| 2026-10-19 18:57 | �PID | kp 0.200 kd 0.220 ki 0.070 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | lap 0.01 s, rms err 3 |
+| 2026-10-19 18:58 | �����������������}=*�ɂ�ե͕�5����5�����b���b������������PID | kp 0.300 kd 0.220 ki 0.070 base 120 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | autotune stopped: no finished trials |
+| 2026-10-19 19:51 | PID | kp 0.300 kd 0.000 ki 0.000 base 100 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 1 mark 200 | autotune stopped: no finished trials |
+| 2026-10-19 19:54 | PID | kp 0.300 kd 0.000 ki 0.000 base 100 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 2 mark 200 | lap 6.30 s, rms err 0 |
+| 2026-10-19 19:54 | PID | kp 0.300 kd 0.000 ki 0.000 base 100 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 2 mark 200 | lap 6.30 s, rms err 0 |
+| 2026-10-19 19:57 | PID | kp 0.300 kd 0.000 ki 0.000 base 100 slow 0.300 expo 3.00 min 80 turn 510 bang 80 off 0 stop 200 trim 0 lap 1 marks 2 mark 200 | lap 13.05 s, rms err 0 |
