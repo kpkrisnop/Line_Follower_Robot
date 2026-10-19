@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["textual>=0.80", "pyserial>=3.5", "optuna>=4"]
+# dependencies = ["textual>=1.0", "pyserial>=3.5", "optuna>=4"]
 # ///
 """Line follower tuner. Run: uv run tuner.py   (or just: robot)
 
@@ -22,10 +22,10 @@ import optuna
 import serial
 from serial.tools import list_ports
 from rich.text import Text
-from textual.app import App, ComposeResult
+from textual.app import App, ComposeResult, SystemCommand
 from textual.containers import Horizontal, Vertical
 from textual.widget import Widget
-from textual.widgets import Footer, Input, Sparkline, Static
+from textual.widgets import Footer, Input, MarkdownViewer, Sparkline, Static
 
 BAUD = 115200
 CH340_VID = 0x1A86
@@ -163,9 +163,19 @@ class Curve(Widget):
         return t
 
 
+def doc_text(name):
+    text = Path(__file__).with_name(name).read_text()
+    if name == "docs.md":  # settings reference comes from HELP, so it can't drift from the About box
+        text += "\n| Setting | Step | What it does |\n|---|---|---|\n" + "".join(
+            f"| `{n}` | ±{step:g} | {HELP[n]} |\n" for n, step, _ in PARAMS)
+    return text
+
+
 class Tuner(App):
     CSS = """
-    Screen { layout: vertical; }
+    Screen { layout: vertical; layers: base doc; }
+    #doc { layer: doc; display: none; width: 100%; height: 100%; border: round $accent;
+           border-title-align: left; background: $surface; }
     #top { height: 17; }
     Settings { width: 30; border: round $accent; border-title-align: left; padding: 0 1; }
     #live { height: 12; border: round $accent; padding: 0 1; }
@@ -196,6 +206,7 @@ class Tuner(App):
         yield Static(id="notes")
         yield Static(id="msg")
         yield Input(id="entry")
+        yield MarkdownViewer(id="doc", show_table_of_contents=False)
         yield Footer()
 
     def on_mount(self):
@@ -467,7 +478,32 @@ class Tuner(App):
     def action_note(self):
         self.open_input("note")
 
+    def get_system_commands(self, screen):
+        yield from super().get_system_commands(screen)
+        yield SystemCommand("Tuning guide", "Step-by-step: calibrate, trim, PID, corners, laps, autotune",
+                            lambda: self.open_doc("tuning-guide.md"))
+        yield SystemCommand("Documentation", "Keys, screen, states, lap mode, autotune, files, every setting",
+                            lambda: self.open_doc("docs.md"))
+
+    # an overlay on the main screen (not a pushed Screen), so the panels underneath keep updating
+    async def open_doc(self, name):
+        doc = self.query_one("#doc", MarkdownViewer)
+        await doc.document.update(doc_text(name))
+        doc.border_title = "Tuning guide" if name == "tuning-guide.md" else "Documentation"
+        doc.border_subtitle = "Esc closes · ↑↓ PgUp PgDn scroll"
+        doc.display = True
+        doc.scroll_home(animate=False)
+        doc.focus()
+
+    def check_action(self, action, parameters):
+        # while a page is open, keys like space or a must not drive the car
+        doc = self.query("#doc")  # empty before compose and while the palette is open
+        if doc and doc.first().display and action in ("toggle_run", "mode", "cal", "note", "autotune"):
+            return False
+        return True
+
     def action_cancel(self):
+        self.query_one("#doc").display = False
         entry = self.query_one("#entry", Input)
         entry.display = False
         self.query_one(Settings).focus()

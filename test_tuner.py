@@ -33,6 +33,9 @@ async def main():
             app.handle_line(line)  # raised before the fix → killed the serial thread
         app.handle_line("mode PID PAUSED | kp 0.900 ki 0.000 kd 0.500")
         assert app.query_one(tuner.Settings).values["kd"] == 0.5
+        await app.open_doc("docs.md")  # every setting documented, and the page opens
+        assert all(f"`{n}`" in tuner.doc_text("docs.md") for n, _, _ in tuner.PARAMS)
+        assert app.query_one("#doc").display
     print("ok", flush=True)
 
 
