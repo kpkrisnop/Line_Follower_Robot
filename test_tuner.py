@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["textual>=0.80", "pyserial>=3.5", "optuna>=4"]
+# dependencies = ["textual>=0.80", "pyserial>=3.5", "optuna>=4", "bleak>=0.22"]
 # ///
 """Tuner checks against fake robots, no hardware. Run: uv run test_tuner.py"""
 import asyncio
@@ -163,11 +163,11 @@ async def base_station():
     print("ok: base station", flush=True)
 
 
-async def bluetooth():
-    """bt_bridge.ino over /dev/cu.LineFollower: like Wi-Fi, no reset, so the car isn't paused."""
+async def ble():
+    """ble_bridge.ino over BLE: like Wi-Fi, no reset, so the car is not paused (socket stands in for the radio)."""
     srv = socket.create_server(("127.0.0.1", 0))
-    tuner.BT = f"socket://127.0.0.1:{srv.getsockname()[1]}"
-    tuner.find_port = lambda: tuner.BT
+    tuner.BLE = f"socket://127.0.0.1:{srv.getsockname()[1]}"
+    tuner.find_port = lambda: tuner.BLE
     got = []
 
     def car(conn):
@@ -188,10 +188,10 @@ async def bluetooth():
     app = tuner.Tuner()
     async with app.run_test() as pilot:
         await pilot.pause(1.5)
-        assert app.via == "bt" and app.state == "PAUSED"
+        assert app.via == "ble" and app.state == "PAUSED"
         assert b"tui" in b"".join(got) and b"pause" not in b"".join(got), got
-        assert "Bluetooth" in str(app.query_one("#live").border_subtitle)
-    print("ok: bluetooth", flush=True)
+        assert "BLE" in str(app.query_one("#live").border_subtitle)
+    print("ok: ble", flush=True)
 
 
 STATUS = b"PID L_DO:0 R_DO:0 L_AO:23 R_AO:22 err:1.00 cruise:0 L_spd:0 R_spd:0 PAUSED\n"
@@ -200,5 +200,5 @@ asyncio.run(autotune())
 asyncio.run(fake_lap())
 asyncio.run(silent_wifi())
 asyncio.run(base_station())
-asyncio.run(bluetooth())
+asyncio.run(ble())
 os._exit(0)  # serial thread is a daemon blocked on the silent socket

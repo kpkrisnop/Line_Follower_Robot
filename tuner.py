@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["textual>=1.0", "pyserial>=3.5", "optuna>=4", "pyobjc-framework-CoreWLAN; sys_platform == 'darwin'"]
+# dependencies = ["textual>=1.0", "pyserial>=3.5", "optuna>=4", "bleak>=0.22", "pyobjc-framework-CoreWLAN; sys_platform == 'darwin'"]
 # ///
 """Line follower tuner. Run: uv run tuner.py   (or just: robot)
 
@@ -11,8 +11,10 @@ In lap mode ("lap 1") every finished lap is logged there too.
 Autotune ("a"): Optuna tries kp/kd/ki on the loop; each trial skips the lap in progress
 when the values change and scores the next full lap.
 """
+import asyncio
 import csv
 import json
+import queue
 import re
 import statistics
 import threading
@@ -26,6 +28,7 @@ try:
 except ImportError:
     CoreWLAN = None
 import serial
+from bleak import BleakClient, BleakScanner
 from serial.tools import list_ports
 from rich.text import Text
 from textual.app import App, ComposeResult, SystemCommand
@@ -36,7 +39,9 @@ from textual.widgets import Footer, Input, MarkdownViewer, Sparkline, Static
 BAUD = 115200
 CH340_VID = 0x1A86
 WIFI = "socket://192.168.77.1:23"  # wifi_bridge on the ESP8266; join Wi-Fi "LineFollower" first
-BT = "/dev/cu.LineFollower"  # bt_bridge on the ESP32; exists once "LineFollower" is paired in macOS Bluetooth
+BLE = "ble://LineFollower"  # ble_bridge on the ESP32: Nordic UART service, no pairing
+NUS_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"  # commands to the robot
+NUS_TX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"  # robot output, as notifications
 LOG = Path(__file__).with_name("tuning-log.md")
 LOG_HEADER = "# Tuning log\n\n| Time | Mode | Settings | Note |\n|---|---|---|---|\n"
 TELEM_DIR = Path(__file__).with_name("telemetry")  # one CSV per tuner run, every 10 Hz status line
@@ -87,9 +92,70 @@ def find_port():
         if p.vid == CH340_VID:
             return p.device
     # ponytail: fallback for a non-CH340 Uno; add its VID above if it ever matters
-    if Path(BT).exists():  # before other USB serials: the ESP32's own USB (CP2102) isn't the Uno
-        return BT
+    try:  # before other USB serials: the ESP32's own USB (CP2102) isn't the Uno
+        if asyncio.run(BleakScanner.find_device_by_name(BLE[6:], timeout=3)):
+            return BLE
+    except Exception:  # Bluetooth off or not allowed
+        pass
     return next((p.device for p in ports if "usbserial" in p.device or "usbmodem" in p.device), WIFI)
+
+
+class BleSerial:
+    """Just enough of pyserial (read, write, close, with) over BLE Nordic UART for serial_loop.
+    bleak is async: its own event loop runs on a thread, and calls are handed to it."""
+
+    def __init__(self, port, baud=None, timeout=0.1):
+        self.port, self.timeout = port, timeout
+        self.rx, self.lost = queue.Queue(), threading.Event()
+        self.loop = asyncio.new_event_loop()
+        threading.Thread(target=self.loop.run_forever, daemon=True).start()
+        try:
+            self._call(self._connect(port[6:]), 30)
+        except serial.SerialException:
+            self.loop.call_soon_threadsafe(self.loop.stop)
+            raise
+
+    def _call(self, coro, timeout):
+        try:
+            return asyncio.run_coroutine_threadsafe(coro, self.loop).result(timeout)
+        except Exception as e:  # BleakError, timeouts: serial_loop reconnects on SerialException
+            raise serial.SerialException(f"BLE: {e!r}") from e
+
+    async def _connect(self, name):
+        dev = await BleakScanner.find_device_by_name(name, timeout=5)
+        if not dev:
+            raise serial.SerialException(f"BLE {name} not found")
+        self.client = BleakClient(dev, disconnected_callback=lambda _: self.lost.set())
+        await self.client.connect()
+        await self.client.start_notify(NUS_TX, lambda _, d: self.rx.put(bytes(d)))
+
+    def read(self, n=4096):  # ponytail: ignores n, returns whatever arrived; serial_loop splits lines itself
+        if self.lost.is_set():
+            raise serial.SerialException("BLE disconnected")
+        try:
+            data = self.rx.get(timeout=self.timeout)
+        except queue.Empty:
+            return b""
+        while not self.rx.empty():
+            data += self.rx.get_nowait()
+        return data
+
+    def write(self, b):
+        for i in range(0, len(b), 180):  # under the 247 MTU the bridge asks for
+            self._call(self.client.write_gatt_char(NUS_RX, b[i:i + 180], response=False), 5)
+
+    def close(self):
+        try:
+            self._call(self.client.disconnect(), 5)
+        except serial.SerialException:
+            pass
+        self.loop.call_soon_threadsafe(self.loop.stop)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
 
 
 def rssi_color(dbm):
@@ -240,7 +306,7 @@ class Tuner(App):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="live"):
-            yield Static("waiting for robot… plug in the USB, pair Bluetooth LineFollower or join its Wi-Fi", id="livetext")
+            yield Static("waiting for robot… plug in the USB, switch the car on (BLE LineFollower)", id="livetext")
             yield Sparkline([0], id="graph")
         with Horizontal(id="top"):
             yield Settings(id="settings")
@@ -295,15 +361,16 @@ class Tuner(App):
                 time.sleep(1)
                 continue
             try:
-                with serial.serial_for_url(port, BAUD, timeout=0.1) as ser:  # USB: opening resets the Uno
+                opener = BleSerial if port.startswith("ble://") else serial.serial_for_url
+                with opener(port, BAUD, timeout=0.1) as ser:  # USB: opening resets the Uno
                     self.call_from_thread(self.set_msg, f"connected {port}, waiting for boot…")
                     buf, booted, t0 = "", False, time.time()
-                    self.via, self.base_rssi = {WIFI: "wifi", BT: "bt"}.get(port, "usb"), None
-                    wireless = port in (WIFI, BT)
-                    if wireless:  # no reset over Wi-Fi/Bluetooth: watch it drive, don't pause it
+                    self.via, self.base_rssi = {WIFI: "wifi", BLE: "ble"}.get(port, "usb"), None
+                    wireless = port in (WIFI, BLE)
+                    if wireless:  # no reset over Wi-Fi/BLE: watch it drive, don't pause it
                         ser.write(b"tui\n")
                         booted, self.ser = True, ser
-                        self.call_from_thread(self.set_msg, f"connected over {'Wi-Fi' if port == WIFI else 'Bluetooth'} (car not paused)")
+                        self.call_from_thread(self.set_msg, f"connected over {'Wi-Fi' if port == WIFI else 'BLE'} (car not paused)")
                     last = time.time()
                     while True:
                         data = ser.read(4096)
@@ -546,8 +613,8 @@ class Tuner(App):
             iface = CoreWLAN and CoreWLAN.CWWiFiClient.sharedWiFiClient().interface()
             dbm = iface.rssiValue() if iface else 0  # 0 = not associated
             live.border_subtitle = "Wi-Fi LineFollower" + (f" · [{rssi_color(dbm)}]{dbm} dBm[/]" if dbm else "")
-        elif self.via == "bt":  # ponytail: no RSSI, macOS doesn't expose it for a serial-port link
-            live.border_subtitle = "Bluetooth LineFollower"
+        elif self.via == "ble":  # ponytail: no RSSI shown; add bleak's per-connection RSSI if range matters
+            live.border_subtitle = "BLE LineFollower"
         else:
             live.border_subtitle = f"USB {self.ser.port.split('/')[-1]}"
 
@@ -561,7 +628,7 @@ class Tuner(App):
 
     def disconnected(self):
         self.query_one("#live").add_class("lost")
-        self.query_one("#livetext").update("[b red]DISCONNECTED[/] — reconnecting…\nplug in the USB, pair Bluetooth LineFollower or join its Wi-Fi")
+        self.query_one("#livetext").update("[b red]DISCONNECTED[/] — reconnecting…\nplug in the USB, switch the car on (BLE LineFollower)")
         self.set_msg("[b red]disconnected[/]")
 
     def set_msg(self, text):
