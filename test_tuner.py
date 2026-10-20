@@ -131,9 +131,41 @@ async def fake_lap():
     print("ok: fake lap", flush=True)
 
 
+async def base_station():
+    """base_station.ino on USB: recognised by its "base:" lines, car not paused, radio signal shown."""
+    srv = socket.create_server(("127.0.0.1", 0))
+    tuner.WIFI = "socket://192.0.2.1:23"  # not this port: the tuner must treat it as USB
+    tuner.find_port = lambda: f"socket://127.0.0.1:{srv.getsockname()[1]}"
+    got = []
+
+    def base(conn):  # like the real base: "base:" line every so often (socket:// open drops what came before)
+        conn.settimeout(0.3)
+        for _ in range(100):
+            try:
+                conn.sendall(b"base: car -63 dBm\n" + STATUS)
+                got.append(conn.recv(100))
+            except OSError:
+                pass
+
+    def serve():  # every connection: the previous test's reader thread is still alive and reconnects too
+        while True:
+            threading.Thread(target=base, args=(srv.accept()[0],), daemon=True).start()
+
+    threading.Thread(target=serve, daemon=True).start()
+    tuner.Tuner.serial_loop = REAL_LOOP
+    app = tuner.Tuner()
+    async with app.run_test() as pilot:
+        await pilot.pause(1.5)
+        assert app.via == "base" and app.state == "PAUSED"  # status line got through
+        assert b"tui" in b"".join(got) and b"pause" not in b"".join(got), got
+        assert "-63" in str(app.query_one("#live").border_subtitle)
+    print("ok: base station", flush=True)
+
+
 STATUS = b"PID L_DO:0 R_DO:0 L_AO:23 R_AO:22 err:1.00 cruise:0 L_spd:0 R_spd:0 PAUSED\n"
 asyncio.run(main())
 asyncio.run(autotune())
 asyncio.run(fake_lap())
 asyncio.run(silent_wifi())
+asyncio.run(base_station())
 os._exit(0)  # serial thread is a daemon blocked on the silent socket

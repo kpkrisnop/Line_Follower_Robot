@@ -89,6 +89,10 @@ def find_port():
     return next((p.device for p in ports if "usbserial" in p.device or "usbmodem" in p.device), WIFI)
 
 
+def rssi_color(dbm):
+    return "red" if dbm < -80 else "yellow" if dbm < -70 else "green"
+
+
 def fmt(name, value):
     dec = next(d for n, _, d in PARAMS if n == name)
     return f"{value:.{dec}f}"
@@ -250,6 +254,7 @@ class Tuner(App):
 
     def on_mount(self):
         self.ser = None
+        self.via, self.base_rssi = None, None  # "usb" | "wifi" | "base"; base: car's signal in dBm
         self.mode = None
         self.paused = None
         self.state = None
@@ -290,6 +295,7 @@ class Tuner(App):
                 with serial.serial_for_url(port, BAUD, timeout=0.1) as ser:  # USB: opening resets the Uno
                     self.call_from_thread(self.set_msg, f"connected {port}, waiting for boot…")
                     buf, booted, t0 = "", False, time.time()
+                    self.via, self.base_rssi = ("wifi" if port == WIFI else "usb"), None
                     if port == WIFI:  # no reset over Wi-Fi: watch it drive, don't pause it
                         ser.write(b"tui\n")
                         booted, self.ser = True, ser
@@ -305,7 +311,13 @@ class Tuner(App):
                         *lines, buf = buf.split("\n")
                         for line in lines:
                             line = line.strip()
-                            if not booted and ("defaults" in line or "Loaded" in line):
+                            if line.startswith("base:"):  # base_station.ino on USB: the car is on the radio
+                                self.base_rssi = int(line.split()[2]) if line.startswith("base: car") else None
+                                if not booted:  # not reset by opening, like Wi-Fi: don't pause it
+                                    ser.write(b"tui\n")
+                                    booted, self.ser, self.via = True, ser, "base"
+                                    self.call_from_thread(self.set_msg, f"connected via base station {port} (car not paused)")
+                            elif not booted and ("defaults" in line or "Loaded" in line):
                                 ser.write(b"pause\ntui\n")  # lands inside the firmware's 1 s boot wait
                                 booted = True
                                 self.ser = ser
@@ -520,10 +532,14 @@ class Tuner(App):
         box.update(f"{HELP[name]}\n\n[dim]now {fmt(name, val) if val is not None else '—'} · step ±{step:g}[/dim]")
 
     def show_rssi(self):
+        live = self.query_one("#live")
+        if self.ser and self.via == "base":  # signal at the base, from the car's packets
+            dbm = self.base_rssi
+            live.border_subtitle = f"radio [{rssi_color(dbm)}]{dbm} dBm[/]" if dbm else "radio [red]no car[/]"
+            return
         iface = CoreWLAN and CoreWLAN.CWWiFiClient.sharedWiFiClient().interface()
         dbm = iface.rssiValue() if iface and getattr(self.ser, "port", None) == WIFI else 0  # 0 = not associated
-        color = "red" if dbm < -80 else "yellow" if dbm < -70 else "green"
-        self.query_one("#live").border_subtitle = f"Wi-Fi [{color}]{dbm} dBm[/]" if dbm else ""
+        live.border_subtitle = f"Wi-Fi [{rssi_color(dbm)}]{dbm} dBm[/]" if dbm else ""
 
     def check_stale(self):
         self.show_rssi()

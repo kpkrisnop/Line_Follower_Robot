@@ -57,6 +57,7 @@ For the step-by-step procedure, open **Tuning guide** from the command palette (
 
 ## Connection
 - USB is found by the CH340 chip, whatever the port name. Opening USB resets the Uno; the tuner pauses the car within its 1 s boot wait.
+- **Base station** (`base_station/`, ESP32 on the Mac's USB): talks to the car's ESP over ESP-NOW, so the Mac keeps its normal Wi-Fi and internet. Recognised by its `base:` lines; the car is not paused. Live box bottom right: `radio -55 dBm` (signal of the car at the base) or `radio no car`. Car and base must be on the same channel (`CHANNEL`, 1).
 - No USB → Wi-Fi `socket://192.168.77.1:23` (join `LineFollower`). The car is not paused. 2 s of silence = link lost, it reconnects by itself.
 - **USB and the ESP D2 → D0 wire together = USB commands get lost.** Pull that wire for bench / USB work.
 - Firmware uploads: direct USB only. If `MAGIC` changed, read the settings first and set them again afterwards.
