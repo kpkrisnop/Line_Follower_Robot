@@ -87,8 +87,9 @@ def find_port():
         if p.vid == CH340_VID:
             return p.device
     # ponytail: fallback for a non-CH340 Uno; add its VID above if it ever matters
-    usb = next((p.device for p in ports if "usbserial" in p.device or "usbmodem" in p.device), None)
-    return usb or (BT if Path(BT).exists() else WIFI)
+    if Path(BT).exists():  # before other USB serials: the ESP32's own USB (CP2102) isn't the Uno
+        return BT
+    return next((p.device for p in ports if "usbserial" in p.device or "usbmodem" in p.device), WIFI)
 
 
 def rssi_color(dbm):
