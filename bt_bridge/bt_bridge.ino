@@ -15,6 +15,9 @@ void setup() {
   Serial.begin(115200);
   Serial2.setRxBufferSize(1024);  // before begin(); the ~700 B `?` help burst fits
   Serial2.begin(115200, SERIAL_8N1, RX_PIN, TX_PIN);
+  // Without SSP the core does legacy PIN pairing, and with no PIN set it answers an empty one,
+  // so macOS pairing fails. SSP with no input/output = "Just Works": pairs with no code.
+  bt.enableSSP(false, false);
   bt.begin("LineFollower");
   Serial.println("\nbridge up: Bluetooth LineFollower");
 }
