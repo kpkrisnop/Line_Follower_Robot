@@ -36,6 +36,7 @@ from textual.widgets import Footer, Input, MarkdownViewer, Sparkline, Static
 BAUD = 115200
 CH340_VID = 0x1A86
 WIFI = "socket://192.168.77.1:23"  # wifi_bridge on the ESP8266; join Wi-Fi "LineFollower" first
+BT = "/dev/cu.LineFollower"  # bt_bridge on the ESP32; exists once "LineFollower" is paired in macOS Bluetooth
 LOG = Path(__file__).with_name("tuning-log.md")
 LOG_HEADER = "# Tuning log\n\n| Time | Mode | Settings | Note |\n|---|---|---|---|\n"
 TELEM_DIR = Path(__file__).with_name("telemetry")  # one CSV per tuner run, every 10 Hz status line
@@ -86,7 +87,8 @@ def find_port():
         if p.vid == CH340_VID:
             return p.device
     # ponytail: fallback for a non-CH340 Uno; add its VID above if it ever matters
-    return next((p.device for p in ports if "usbserial" in p.device or "usbmodem" in p.device), WIFI)
+    usb = next((p.device for p in ports if "usbserial" in p.device or "usbmodem" in p.device), None)
+    return usb or (BT if Path(BT).exists() else WIFI)
 
 
 def rssi_color(dbm):
@@ -237,7 +239,7 @@ class Tuner(App):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="live"):
-            yield Static("waiting for robot… plug in the USB or join Wi-Fi LineFollower", id="livetext")
+            yield Static("waiting for robot… plug in the USB, pair Bluetooth LineFollower or join its Wi-Fi", id="livetext")
             yield Sparkline([0], id="graph")
         with Horizontal(id="top"):
             yield Settings(id="settings")
@@ -295,17 +297,18 @@ class Tuner(App):
                 with serial.serial_for_url(port, BAUD, timeout=0.1) as ser:  # USB: opening resets the Uno
                     self.call_from_thread(self.set_msg, f"connected {port}, waiting for boot…")
                     buf, booted, t0 = "", False, time.time()
-                    self.via, self.base_rssi = ("wifi" if port == WIFI else "usb"), None
-                    if port == WIFI:  # no reset over Wi-Fi: watch it drive, don't pause it
+                    self.via, self.base_rssi = {WIFI: "wifi", BT: "bt"}.get(port, "usb"), None
+                    wireless = port in (WIFI, BT)
+                    if wireless:  # no reset over Wi-Fi/Bluetooth: watch it drive, don't pause it
                         ser.write(b"tui\n")
                         booted, self.ser = True, ser
-                        self.call_from_thread(self.set_msg, "connected over Wi-Fi (car not paused)")
+                        self.call_from_thread(self.set_msg, f"connected over {'Wi-Fi' if port == WIFI else 'Bluetooth'} (car not paused)")
                     last = time.time()
                     while True:
                         data = ser.read(4096)
                         if data:
                             last = time.time()
-                        elif port == WIFI and time.time() - last > 2:  # status comes every 100 ms; Wi-Fi drops don't close the socket
+                        elif wireless and time.time() - last > 2:  # status comes every 100 ms; radio drops don't close the port
                             raise serial.SerialException("no data for 2 s")
                         buf += data.decode("utf-8", "replace")
                         *lines, buf = buf.split("\n")
@@ -542,6 +545,8 @@ class Tuner(App):
             iface = CoreWLAN and CoreWLAN.CWWiFiClient.sharedWiFiClient().interface()
             dbm = iface.rssiValue() if iface else 0  # 0 = not associated
             live.border_subtitle = "Wi-Fi LineFollower" + (f" · [{rssi_color(dbm)}]{dbm} dBm[/]" if dbm else "")
+        elif self.via == "bt":  # ponytail: no RSSI, macOS doesn't expose it for a serial-port link
+            live.border_subtitle = "Bluetooth LineFollower"
         else:
             live.border_subtitle = f"USB {self.ser.port.split('/')[-1]}"
 
@@ -555,7 +560,7 @@ class Tuner(App):
 
     def disconnected(self):
         self.query_one("#live").add_class("lost")
-        self.query_one("#livetext").update("[b red]DISCONNECTED[/] — reconnecting…\nplug in the USB or join Wi-Fi LineFollower")
+        self.query_one("#livetext").update("[b red]DISCONNECTED[/] — reconnecting…\nplug in the USB, pair Bluetooth LineFollower or join its Wi-Fi")
         self.set_msg("[b red]disconnected[/]")
 
     def set_msg(self, text):

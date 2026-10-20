@@ -163,10 +163,42 @@ async def base_station():
     print("ok: base station", flush=True)
 
 
+async def bluetooth():
+    """bt_bridge.ino over /dev/cu.LineFollower: like Wi-Fi, no reset, so the car isn't paused."""
+    srv = socket.create_server(("127.0.0.1", 0))
+    tuner.BT = f"socket://127.0.0.1:{srv.getsockname()[1]}"
+    tuner.find_port = lambda: tuner.BT
+    got = []
+
+    def car(conn):
+        conn.settimeout(0.3)
+        for _ in range(100):
+            try:
+                conn.sendall(STATUS)
+                got.append(conn.recv(100))
+            except OSError:
+                pass
+
+    def serve():
+        while True:
+            threading.Thread(target=car, args=(srv.accept()[0],), daemon=True).start()
+
+    threading.Thread(target=serve, daemon=True).start()
+    tuner.Tuner.serial_loop = REAL_LOOP
+    app = tuner.Tuner()
+    async with app.run_test() as pilot:
+        await pilot.pause(1.5)
+        assert app.via == "bt" and app.state == "PAUSED"
+        assert b"tui" in b"".join(got) and b"pause" not in b"".join(got), got
+        assert "Bluetooth" in str(app.query_one("#live").border_subtitle)
+    print("ok: bluetooth", flush=True)
+
+
 STATUS = b"PID L_DO:0 R_DO:0 L_AO:23 R_AO:22 err:1.00 cruise:0 L_spd:0 R_spd:0 PAUSED\n"
 asyncio.run(main())
 asyncio.run(autotune())
 asyncio.run(fake_lap())
 asyncio.run(silent_wifi())
 asyncio.run(base_station())
+asyncio.run(bluetooth())
 os._exit(0)  # serial thread is a daemon blocked on the silent socket
