@@ -158,7 +158,8 @@ async def base_station():
         await pilot.pause(1.5)
         assert app.via == "base" and app.state == "PAUSED"  # status line got through
         assert b"tui" in b"".join(got) and b"pause" not in b"".join(got), got
-        assert "-63" in str(app.query_one("#live").border_subtitle)
+        sub = str(app.query_one("#live").border_subtitle)
+        assert "base station" in sub and "-63" in sub, sub
     print("ok: base station", flush=True)
 
 

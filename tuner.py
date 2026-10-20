@@ -531,15 +531,19 @@ class Tuner(App):
         box.border_title = f"About {name}"
         box.update(f"{HELP[name]}\n\n[dim]now {fmt(name, val) if val is not None else '—'} · step ±{step:g}[/dim]")
 
-    def show_rssi(self):
+    def show_rssi(self):  # bottom right of Live: where the telemetry comes from, and its signal
         live = self.query_one("#live")
-        if self.ser and self.via == "base":  # signal at the base, from the car's packets
+        if not self.ser:
+            live.border_subtitle = ""
+        elif self.via == "base":  # signal at the base, from the car's packets
             dbm = self.base_rssi
-            live.border_subtitle = f"radio [{rssi_color(dbm)}]{dbm} dBm[/]" if dbm else "radio [red]no car[/]"
-            return
-        iface = CoreWLAN and CoreWLAN.CWWiFiClient.sharedWiFiClient().interface()
-        dbm = iface.rssiValue() if iface and getattr(self.ser, "port", None) == WIFI else 0  # 0 = not associated
-        live.border_subtitle = f"Wi-Fi [{rssi_color(dbm)}]{dbm} dBm[/]" if dbm else ""
+            live.border_subtitle = "base station · " + (f"radio [{rssi_color(dbm)}]{dbm} dBm[/]" if dbm else "radio [red]no car[/]")
+        elif self.via == "wifi":
+            iface = CoreWLAN and CoreWLAN.CWWiFiClient.sharedWiFiClient().interface()
+            dbm = iface.rssiValue() if iface else 0  # 0 = not associated
+            live.border_subtitle = "Wi-Fi LineFollower" + (f" · [{rssi_color(dbm)}]{dbm} dBm[/]" if dbm else "")
+        else:
+            live.border_subtitle = f"USB {self.ser.port.split('/')[-1]}"
 
     def check_stale(self):
         self.show_rssi()
