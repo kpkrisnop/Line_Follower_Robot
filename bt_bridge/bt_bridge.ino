@@ -10,6 +10,21 @@
 const int RX_PIN = 16, TX_PIN = 17;
 
 BluetoothSerial bt;
+volatile bool linkOpen, restartBt;
+
+// BluetoothSerial keeps one client handle. If a link dies with a failed close, the handle is never
+// cleared and every later connection is refused as a "second connection" until reset.
+// ponytail: reset the whole ESP32 on any close (~1 s); a proper fix would patch the library.
+void onBt(esp_spp_cb_event_t event, esp_spp_cb_param_t *p) {
+  if (event == ESP_SPP_SRV_OPEN_EVT) {
+    Serial.printf("bt: open status %d%s\n", p->srv_open.status, linkOpen ? " (while one was open: stuck)" : "");
+    if (linkOpen) restartBt = true;
+    linkOpen = true;
+  } else if (event == ESP_SPP_CLOSE_EVT) {
+    Serial.printf("bt: close status %d by_remote %d\n", p->close.status, p->close.async);
+    restartBt = true;
+  }
+}
 
 void setup() {
   Serial.begin(115200);
@@ -18,11 +33,17 @@ void setup() {
   // Without SSP the core does legacy PIN pairing, and with no PIN set it answers an empty one,
   // so macOS pairing fails. SSP with no input/output = "Just Works": pairs with no code.
   bt.enableSSP(false, false);
+  bt.register_callback(onBt);
   bt.begin("LineFollower");
   Serial.println("\nbridge up: Bluetooth LineFollower");
 }
 
 void loop() {
+  if (restartBt) {
+    Serial.println("bt: restarting to clear the link");
+    Serial.flush();
+    ESP.restart();
+  }
   uint8_t buf[256];
   size_t n = Serial2.available();
   if (n) {
