@@ -97,7 +97,8 @@ def find_port():
             return BLE
     except Exception:  # Bluetooth off or not allowed
         pass
-    return next((p.device for p in ports if "usbserial" in p.device or "usbmodem" in p.device), WIFI)
+    # No Wi-Fi fallback: the ESP8266 bridge is gone, and a dead socket:// try cost 5 s per BLE drop
+    return next((p.device for p in ports if "usbserial" in p.device or "usbmodem" in p.device), None)
 
 
 class BleSerial:
