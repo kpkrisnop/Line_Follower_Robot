@@ -76,7 +76,7 @@ HELP = {
     "mark": "Both black for less than this many ms = a checkpoint mark. 1 s or more = off track.",
     "smooth": "Tuner only, not on the robot. Autotune score = lap s + smooth × shake, where shake = mean |change in err| between status lines (10 Hz) over the lap. 0 = only lap time counts; raise it until shaky laps score worse than smooth ones. Every lap row shows its shake.",
     "reach": "Tuner only. How far autotune may move each gain from its value when you press a, as a share of the "
-             "full range below: 0.25 = within ±25 % of it (e.g. kp 0.27 → 0.11–0.43). Lower = gentler trials. "
+             "full range below: 0.25 = within ±25 % of it (e.g. kp 0.27 → 0.15–0.43). Lower = gentler trials. "
              "1 = the whole range. Takes effect at the next a.",
     "minlap": "Shortest real lap, s. A mark sooner than minlap/marks s after the last counted one is ignored (corner blips). 0 = off.",
 }
