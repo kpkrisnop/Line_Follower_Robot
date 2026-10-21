@@ -48,7 +48,8 @@ For the step-by-step procedure, open **Tuning guide** from the command palette (
 - `f` = the last lap was fake: it leaves best lap, and if it was scored its trial is dropped and run again.
 - Values change mid-lap: the rest of that lap is warm-up, the next full lap is scored.
 - Stopping (`a`) or finishing applies the best trial's values.
-- Ranges, trial count and weights are constants at the top of `tuner.py` (`AUTO`, `AUTO_TRIALS`, `OFFTRACK_SCORE`). `smooth` is in Settings, saved in `tuner-settings.json`.
+- `reach` limits how far each gain may move from its value when you press `a`: start ± reach × the full range (0.25 = ±25 %). Lower = gentler trials. The Autotune box shows the ranges it will search.
+- Hard limits, trial count and weights are constants at the top of `tuner.py` (`AUTO`, `AUTO_TRIALS`, `OFFTRACK_SCORE`). `smooth` and `reach` are in Settings, saved in `tuner-settings.json`.
 - The search lives in memory; a restart begins a new search. Every result is in `tuning-log.md`.
 
 ## Files

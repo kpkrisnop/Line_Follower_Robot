@@ -96,6 +96,9 @@ async def autotune():
         assert app.study.trials[0].value == 32.0, app.study.trials[0].value
         app.handle_line(lap_status(3, 2, 20000, state="OFFTRACK"))
         assert app.study.trials[1].value == tuner.OFFTRACK_SCORE
+        assert app.ranges["kp"] == (0.34, 0.66, 0.01), app.ranges  # reach 0.25 × 0.65 wide around 0.5
+        assert all(lo <= app.trial.params[k] <= hi for k, (lo, hi, _) in app.ranges.items())
+        assert tuner.auto_ranges({"kp": 0.2, "kd": 0, "ki": 0}, 1)["kp"] == (0.15, 0.8, 0.01)  # kept inside AUTO
         app.ser.sent.clear()
         app.action_autotune()  # stop
         assert app.study is None and app.ser.sent[app.ser.sent.index("kp") + 1] == "0.500"

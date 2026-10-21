@@ -51,8 +51,8 @@ TELEM_FIELDS = ["L_DO", "R_DO", "L_AO", "R_AO", "err", "cruise", "L_spd", "R_spd
 PARAMS = [("kp", 0.05, 3), ("kd", 0.05, 3), ("ki", 0.001, 3), ("base", 10, 0),
           ("slow", 0.01, 3), ("expo", 0.1, 2), ("min", 10, 0), ("turn", 10, 0), ("bang", 10, 0),
           ("off", 1, 0), ("stop", 10, 0), ("trim", 1, 0), ("lap", 1, 0), ("marks", 1, 0),
-          ("mark", 10, 0), ("minlap", 1, 0), ("smooth", 0.005, 3)]
-LOCAL = {"smooth": 0.03}  # tuner-only settings (not on the robot), with defaults
+          ("mark", 10, 0), ("minlap", 1, 0), ("smooth", 0.005, 3), ("reach", 0.05, 2)]
+LOCAL = {"smooth": 0.03, "reach": 0.25}  # tuner-only settings (not on the robot), with defaults
 LOCAL_FILE = Path(__file__).with_name("tuner-settings.json")
 HELP = {
     "kp": "Proportional gain: steering = kp × err. Higher turns harder towards the line; too high zigzags on straights.",
@@ -75,12 +75,26 @@ HELP = {
     "marks": "Tape marks per lap. The first mark after run starts lap 1.",
     "mark": "Both black for less than this many ms = a checkpoint mark. 1 s or more = off track.",
     "smooth": "Tuner only, not on the robot. Autotune score = lap s + smooth × shake, where shake = mean |change in err| between status lines (10 Hz) over the lap. 0 = only lap time counts; raise it until shaky laps score worse than smooth ones. Every lap row shows its shake.",
+    "reach": "Tuner only. How far autotune may move each gain from its value when you press a, as a share of the "
+             "full range below: 0.25 = within ±25 % of it (e.g. kp 0.27 → 0.11–0.43). Lower = gentler trials. "
+             "1 = the whole range. Takes effect at the next a.",
     "minlap": "Shortest real lap, s. A mark sooner than minlap/marks s after the last counted one is ignored (corner blips). 0 = off.",
 }
 
-# Autotune. ponytail: edit here, not in the app; add in-app editing if these change often
+# Autotune hard limits; `reach` (in the app) narrows them around the starting values.
 # kp 1.9 / kd 1.7 tried on 2026-10-19 were far too aggressive; hand-tuned kp was ~0.3
 AUTO = {"kp": (0.15, 0.8, 0.01), "kd": (0.0, 1.0, 0.01), "ki": (0.0, 0.1, 0.001)}  # low, high, step
+
+
+def auto_ranges(vals, reach):
+    """Search range per gain: start ± reach × the full AUTO width, kept inside AUTO, on the step grid."""
+    out = {}
+    for k, (lo, hi, step) in AUTO.items():
+        v, w = min(max(vals.get(k, lo), lo), hi), reach * (hi - lo)
+        a, b = max(lo, v - w), min(hi, v + w)
+        a, b = lo + round((a - lo) / step) * step, lo + round((b - lo) / step) * step
+        out[k] = (round(a, 6), round(max(b, a), 6), step)
+    return out
 AUTO_TRIALS = 30
 OFFTRACK_SCORE = 60.0   # score for a trial that leaves the track
 optuna.logging.set_verbosity(optuna.logging.WARNING)  # its log lines would scribble over the TUI
@@ -189,6 +203,7 @@ class Settings(Widget, can_focus=True):
     def changed(self):  # row or a value changed: redraw this and the boxes that depend on it
         self.refresh()
         self.app.show_help()
+        self.app.show_auto()  # its ranges follow the gains and reach
         self.app.query_one(Curve).refresh()
 
     def action_move(self, d):
@@ -289,7 +304,7 @@ class Tuner(App):
     Screen { layout: vertical; layers: base doc; }
     #doc { layer: doc; display: none; width: 100%; height: 100%; border: round $accent;
            border-title-align: left; background: $surface; }
-    #top { height: 19; }
+    #top { height: 20; }
     Settings { width: 30; border: round $accent; border-title-align: left; padding: 0 1; }
     #live { height: 12; border: round $accent; padding: 0 1; }
     #live.lost { border: round $error; }
@@ -535,7 +550,7 @@ class Tuner(App):
             study.enqueue_trial(scored.params)      # then the faked one gets another go
             self.study = study
             self.trial = study.ask()
-            for k, (lo, hi, step) in AUTO.items():
+            for k, (lo, hi, step) in self.ranges.items():
                 self.trial.suggest_float(k, lo, hi, step=step)  # same values: nothing to send
             note += f", its trial discarded and queued again"
         self.save_note(note)
@@ -550,9 +565,10 @@ class Tuner(App):
         if not self.ser or not all(k in vals for k in AUTO):
             self.set_msg("autotune needs the robot connected")
             return
+        self.ranges = auto_ranges(vals, vals["reach"])  # fixed for the whole run: TPE needs stable ranges
         self.study = optuna.create_study(direction="minimize")
         # first trial = today's values, so the tuner starts from known-good and has a baseline
-        self.study.enqueue_trial({k: min(max(vals[k], lo), hi) for k, (lo, hi, _) in AUTO.items()})
+        self.study.enqueue_trial({k: min(max(vals[k], lo), hi) for k, (lo, hi, _) in self.ranges.items()})
         self.send("p")
         self.send("lap 1")
         self.next_trial()
@@ -562,7 +578,7 @@ class Tuner(App):
             self.stop_autotune("done")
             return
         self.trial = self.study.ask()
-        for k, (lo, hi, step) in AUTO.items():
+        for k, (lo, hi, step) in self.ranges.items():
             self.set_param(k, self.trial.suggest_float(k, lo, hi, step=step))
         self.trial_laps = 0
         self.show_auto()
@@ -583,8 +599,10 @@ class Tuner(App):
             return None
 
     def show_auto(self):
-        ranges = "  ".join(f"{k} {lo:g}–{hi:g}" for k, (lo, hi, _) in AUTO.items())
-        smooth = self.query_one(Settings).values["smooth"]
+        vals = self.query_one(Settings).values
+        rng = self.ranges if self.study else auto_ranges(vals, vals["reach"])  # off: what a would search
+        ranges = f"reach {vals['reach']:g}: " + "  ".join(f"{k} {lo:g}–{hi:g}" for k, (lo, hi, _) in rng.items())
+        smooth = vals["smooth"]
         text = f"[dim]score = lap s + {smooth:g}×shake · off track {OFFTRACK_SCORE:g} · f = last lap was fake\n{ranges}[/dim]\n"
         if not self.study:
             self.query_one("#auto").update(text + f"off — [b]a[/b] starts {AUTO_TRIALS} trials (car running on the loop)")
