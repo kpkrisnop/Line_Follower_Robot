@@ -47,6 +47,7 @@ Watch the **Slowdown curve** box while you change these.
 1. `lap 1`, then `marks` = the number of tape marks you laid per lap.
 2. Do a few slow laps: each counted mark gives a short high beep. If marks are missed at speed, raise `mark` (ms); it must stay well under 1000 (1 s of black = off track).
    Laps far shorter than the real one (corner blips counted as marks)? Set `minlap` a bit under your real lap time in s.
+   Wiggles counted as marks? Watch `crossing: skew N ms` in the message line: real marks show small N, wiggles big N. Set `skew` between them (default 60).
 3. Off the track (black ≥ 1 s): long low beep, the car stops. Put it back on the line, press space.
 
 ## 8. Autotune (`a`)

@@ -37,6 +37,7 @@ For the step-by-step procedure, open **Tuning guide** from the command palette (
 
 ## Lap mode
 - `lap 1`: a black crossing shorter than `mark` ms is a checkpoint (short high beep); `marks` of them make a lap. The first mark after run starts lap 1.
+- `skew`: a crossing counts as a mark only if both sensors went black within `skew` ms of each other (a tape mark is straight across; a wiggle blacks one sensor first). Each short crossing shows `crossing: skew N ms` in the message line.
 - `minlap`: a mark sooner than `minlap`/`marks` s after the last counted one is ignored (no beep), so corner blips can't make 0.1 s laps.
 - Black for 1 s or more = off the track (the dark floor): stop, long low beep.
 - `lap 0` (competition): the first black crossing stops the car.

@@ -38,6 +38,7 @@ bool LAP = false;              // false = stop on the first stop line (competiti
 int MARKS = 1;                 // checkpoint marks per lap
 int MARK_MS = 300;             // both black for less than this = a checkpoint mark
 int MIN_LAP = 2;               // s; a mark sooner than MIN_LAP/MARKS after the last one is noise (corner blips)
+int SKEW = 60;                 // ms; at a tape mark both sensors go black together, a wiggle blacks one first
 const unsigned long OFFTRACK_MS = 1000;  // both black this long = off the track
 int calMin[2] = {0, 0}, calMax[2] = {1023, 1023};  // raw AO on white / black per sensor, set by "cal"
 bool paused = false;
@@ -64,6 +65,7 @@ void storeSettings(bool save) {
   io(a, STOP_LEVEL, save); io(a, TRIM, save); io(a, calMin, save); io(a, calMax, save);
   io(a, EXPO, save); io(a, LAP, save); io(a, MARKS, save); io(a, MARK_MS, save);
   io(a, MIN_LAP, save);  // appended, MAGIC kept: older EEPROM reads 0xFFFF here, fixed in setup()
+  io(a, SKEW, save);
   if (save) EEPROM.update(0, MAGIC);
 }
 
@@ -95,6 +97,7 @@ void setup() {
   bool saved = EEPROM.read(0) == MAGIC;
   if (saved) storeSettings(false);
   if (MIN_LAP < 0 || MIN_LAP > 60) MIN_LAP = 2;  // saved before minlap existed
+  if (SKEW < 0 || SKEW > 999) SKEW = 60;         // saved before skew existed
   Serial.println(saved ? "Loaded saved settings. Send ? for commands" : "Code defaults. Send ? for commands");
 }
 
@@ -132,6 +135,8 @@ unsigned long lastT, lastPrint;
 bool stopped, offTrack;
 bool onBlack;                  // both sensors on black right now
 unsigned long blackStart;      // when they went black
+unsigned long lBlack, rBlack;  // when each sensor alone last went black
+int skew;                      // ms between the two, for the current both-black
 int cp;                        // checkpoints since "run"
 unsigned long lapStart, splitStart, lastLap, lastSplit;  // ms
 
@@ -166,7 +171,8 @@ void showSettings() {
   Serial.print(F(" lap ")); Serial.print(LAP);
   Serial.print(F(" marks ")); Serial.print(MARKS);
   Serial.print(F(" mark ")); Serial.print(MARK_MS);
-  Serial.print(F(" minlap ")); Serial.println(MIN_LAP);
+  Serial.print(F(" minlap ")); Serial.print(MIN_LAP);
+  Serial.print(F(" skew ")); Serial.println(SKEW);
 }
 
 void handleCommand() {
@@ -209,6 +215,7 @@ void handleCommand() {
     Serial.println(F("marks <n>     checkpoint marks per lap"));
     Serial.println(F("mark <ms>     both black shorter than this = a mark"));
     Serial.println(F("minlap <s>    ignore marks sooner than minlap/marks s after the last"));
+    Serial.println(F("skew <ms>     a mark needs both sensors black within this of each other"));
     Serial.println(F("cal           5 s: slide both sensors across the line by hand"));
     Serial.println(F("d             wipe saved settings (code defaults after reset)"));
   }
@@ -228,6 +235,7 @@ void handleCommand() {
   else if (hasValue && key == "marks") { MARKS = constrain((int)v, 1, 20); save = true; }
   else if (hasValue && key == "mark") { MARK_MS = constrain((int)v, 20, 999); save = true; }
   else if (hasValue && key == "minlap") { MIN_LAP = constrain((int)v, 0, 60); save = true; }
+  else if (hasValue && key == "skew") { SKEW = constrain((int)v, 0, 999); save = true; }
   else if (key == "cal") { save = calibrate(); paused = true; }  // you're holding the car
   else { Serial.print(F("?? ")); Serial.println(cmd); return; }
 
@@ -246,14 +254,25 @@ void loop() {
   bool r = digitalRead(RIGHT_DO) == ON_LINE;
   int la = norm(analogRead(LEFT_AO), 0), ra = norm(analogRead(RIGHT_AO), 1) + AO_OFFSET;
   float err = la - ra;  // >0: line is under the left sensor -> steer left
-  bool stopLine = la > STOP_LEVEL && ra > STOP_LEVEL;  // analog, not DO: the DO pots trip on glare
+  bool lb = la > STOP_LEVEL, rb = ra > STOP_LEVEL;  // analog, not DO: the DO pots trip on glare
+  bool stopLine = lb && rb;
 
   unsigned long now = millis();
   bool waiting = now < BOOT_DELAY_MS;
+  static bool lWas, rWas;
+  if (lb && !lWas) lBlack = now;
+  if (rb && !rWas) rBlack = now;
+  lWas = lb; rWas = rb;
   if (stopLine != onBlack) {
     onBlack = stopLine;
-    if (onBlack) blackStart = now;
-    else if (LAP && !paused && !waiting && !offTrack && now - blackStart < MARK_MS) checkpoint(now);
+    if (onBlack) {
+      blackStart = now;
+      skew = lBlack > rBlack ? lBlack - rBlack : rBlack - lBlack;
+    } else if (LAP && !paused && !waiting && !offTrack && now - blackStart < MARK_MS) {
+      Serial.print(F("crossing: skew ")); Serial.print(skew);  // shown in the tuner: set skew from these
+      if (skew > SKEW) Serial.println(F(" ms, not a mark (wiggle)"));
+      else { Serial.println(F(" ms")); checkpoint(now); }
+    }
   }
   bool longBlack = onBlack && now - blackStart >= OFFTRACK_MS;
 

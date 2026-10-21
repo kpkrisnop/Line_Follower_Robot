@@ -51,7 +51,7 @@ TELEM_FIELDS = ["L_DO", "R_DO", "L_AO", "R_AO", "err", "cruise", "L_spd", "R_spd
 PARAMS = [("kp", 0.05, 3), ("kd", 0.05, 3), ("ki", 0.001, 3), ("base", 10, 0),
           ("slow", 0.01, 3), ("expo", 0.1, 2), ("min", 10, 0), ("turn", 10, 0), ("bang", 10, 0),
           ("off", 1, 0), ("stop", 10, 0), ("trim", 1, 0), ("lap", 1, 0), ("marks", 1, 0),
-          ("mark", 10, 0), ("minlap", 1, 0), ("smooth", 0.005, 3), ("reach", 0.05, 2)]
+          ("mark", 10, 0), ("minlap", 1, 0), ("skew", 10, 0), ("smooth", 0.005, 3), ("reach", 0.05, 2)]
 LOCAL = {"smooth": 0.03, "reach": 0.25}  # tuner-only settings (not on the robot), with defaults
 LOCAL_FILE = Path(__file__).with_name("tuner-settings.json")
 HELP = {
@@ -78,6 +78,9 @@ HELP = {
     "reach": "Tuner only. How far autotune may move each gain from its value when you press a, as a share of the "
              "full range below: 0.25 = within ±25 % of it (e.g. kp 0.27 → 0.15–0.43). Lower = gentler trials. "
              "1 = the whole range. Takes effect at the next a.",
+    "skew": "ms. A tape mark is straight across the track, so both sensors go black almost together; on a wiggle "
+            "one goes black first. A crossing counts as a mark only if the two went black within skew ms. "
+            "Every short crossing shows 'crossing: skew N ms' in the message line: set skew between the marks' and the wiggles'.",
     "minlap": "Shortest real lap, s. A mark sooner than minlap/marks s after the last counted one is ignored (corner blips). 0 = off.",
 }
 
@@ -304,7 +307,7 @@ class Tuner(App):
     Screen { layout: vertical; layers: base doc; }
     #doc { layer: doc; display: none; width: 100%; height: 100%; border: round $accent;
            border-title-align: left; background: $surface; }
-    #top { height: 20; }
+    #top { height: 21; }
     Settings { width: 30; border: round $accent; border-title-align: left; padding: 0 1; }
     #live { height: 12; border: round $accent; padding: 0 1; }
     #live.lost { border: round $error; }
